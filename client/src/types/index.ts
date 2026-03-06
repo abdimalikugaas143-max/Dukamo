@@ -92,6 +92,10 @@ export interface DailyReport {
   notes?: string;
   operational_plan_id?: number;
   plan_title?: string;
+  review_status: 'submitted' | 'approved' | 'rejected';
+  review_notes?: string;
+  reviewed_by?: string;
+  reviewed_at?: string;
   created_at: string;
 }
 
@@ -119,6 +123,7 @@ export interface DashboardData {
     pendingPaymentsAmount: number;
     overduePayments: number;
     activePlans: number;
+    pendingReviews: number;
   };
   recentDailyReports: DailyReport[];
   expiringContracts: ContractorAgreement[];

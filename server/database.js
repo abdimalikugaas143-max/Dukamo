@@ -97,6 +97,10 @@ async function migrate() {
         attendance_count INTEGER DEFAULT 0,
         notes TEXT,
         operational_plan_id INTEGER REFERENCES operational_plans(id) ON DELETE SET NULL,
+        review_status TEXT NOT NULL DEFAULT 'submitted',
+        review_notes TEXT,
+        reviewed_by TEXT,
+        reviewed_at TIMESTAMPTZ,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
 
@@ -114,6 +118,13 @@ async function migrate() {
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
+    `);
+    // Add review columns to existing daily_reports tables (safe ALTER)
+    await client.query(`
+      ALTER TABLE daily_reports ADD COLUMN IF NOT EXISTS review_status TEXT NOT NULL DEFAULT 'submitted';
+      ALTER TABLE daily_reports ADD COLUMN IF NOT EXISTS review_notes TEXT;
+      ALTER TABLE daily_reports ADD COLUMN IF NOT EXISTS reviewed_by TEXT;
+      ALTER TABLE daily_reports ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ;
     `);
     console.log('Database migrations applied successfully');
   } finally {

@@ -14,6 +14,7 @@ router.get('/', async (req, res) => {
       { rows: expiringContracts },
       { rows: [activePlans] },
       { rows: paymentsByStatus },
+      { rows: [pendingReviews] },
     ] = await Promise.all([
       pool.query("SELECT COUNT(*) as count FROM contractors WHERE status = 'active'"),
       pool.query("SELECT COUNT(*) as count FROM contractor_agreements WHERE status = 'active'"),
@@ -21,7 +22,7 @@ router.get('/', async (req, res) => {
       pool.query("SELECT COUNT(*) as count, COALESCE(SUM(amount), 0) as total FROM contractor_payments WHERE status = 'pending'"),
       pool.query("SELECT COUNT(*) as count FROM contractor_payments WHERE status = 'overdue'"),
       pool.query(`
-        SELECT dr.id, dr.report_date, dr.shift, dr.supervisor_name, dr.units_produced
+        SELECT dr.id, dr.report_date, dr.shift, dr.supervisor_name, dr.units_produced, dr.review_status
         FROM daily_reports dr
         ORDER BY dr.report_date DESC, dr.created_at DESC
         LIMIT 5
@@ -43,6 +44,7 @@ router.get('/', async (req, res) => {
         FROM contractor_payments
         GROUP BY status
       `),
+      pool.query("SELECT COUNT(*) as count FROM daily_reports WHERE review_status = 'submitted'"),
     ]);
 
     res.json({
@@ -54,6 +56,7 @@ router.get('/', async (req, res) => {
         pendingPaymentsAmount: parseFloat(pendingPayments.total),
         overduePayments: parseInt(overduePayments.count),
         activePlans: parseInt(activePlans.count),
+        pendingReviews: parseInt(pendingReviews.count),
       },
       recentDailyReports,
       expiringContracts,
