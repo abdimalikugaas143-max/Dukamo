@@ -1,9 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../database');
+const pool = require('../database');
 
 // GET all agreements (with contractor name joined)
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const { status, contractor_id, search } = req.query;
     let query = `
@@ -13,45 +13,47 @@ router.get('/', (req, res) => {
       WHERE 1=1
     `;
     const params = [];
+    let idx = 1;
 
-    if (status) { query += ' AND ca.status = ?'; params.push(status); }
-    if (contractor_id) { query += ' AND ca.contractor_id = ?'; params.push(contractor_id); }
+    if (status) { query += ` AND ca.status = $${idx++}`; params.push(status); }
+    if (contractor_id) { query += ` AND ca.contractor_id = $${idx++}`; params.push(contractor_id); }
     if (search) {
-      query += ' AND (ca.title LIKE ? OR ca.agreement_number LIKE ? OR c.name LIKE ?)';
-      params.push(`%${search}%`, `%${search}%`, `%${search}%`);
+      query += ` AND (ca.title ILIKE $${idx} OR ca.agreement_number ILIKE $${idx} OR c.name ILIKE $${idx})`;
+      params.push(`%${search}%`);
+      idx++;
     }
     query += ' ORDER BY ca.created_at DESC';
 
-    const agreements = db.prepare(query).all(...params);
-    res.json(agreements);
+    const { rows } = await pool.query(query, params);
+    res.json(rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
 // GET single agreement with details
-router.get('/:id', (req, res) => {
+router.get('/:id', async (req, res) => {
   try {
-    const agreement = db.prepare(`
+    const { rows: agreementRows } = await pool.query(`
       SELECT ca.*, c.name as contractor_name, c.company_name, c.phone as contractor_phone, c.email as contractor_email, c.address as contractor_address
       FROM contractor_agreements ca
       LEFT JOIN contractors c ON ca.contractor_id = c.id
-      WHERE ca.id = ?
-    `).get(req.params.id);
+      WHERE ca.id = $1
+    `, [req.params.id]);
 
-    if (!agreement) return res.status(404).json({ error: 'Agreement not found' });
+    if (!agreementRows[0]) return res.status(404).json({ error: 'Agreement not found' });
 
-    const details = db.prepare('SELECT * FROM contract_details WHERE agreement_id = ? ORDER BY id').all(req.params.id);
-    agreement.details = details;
+    const { rows: details } = await pool.query('SELECT * FROM contract_details WHERE agreement_id = $1 ORDER BY id', [req.params.id]);
+    agreementRows[0].details = details;
 
-    res.json(agreement);
+    res.json(agreementRows[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
 // POST create agreement
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   try {
     const {
       contractor_id, agreement_number, title, scope_of_work,
@@ -63,16 +65,16 @@ router.post('/', (req, res) => {
       return res.status(400).json({ error: 'contractor_id, agreement_number, and title are required' });
     }
 
-    const result = db.prepare(`
+    const { rows } = await pool.query(`
       INSERT INTO contractor_agreements
       (contractor_id, agreement_number, title, scope_of_work, start_date, end_date, contract_value, currency, payment_terms, status, special_conditions)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(contractor_id, agreement_number, title, scope_of_work, start_date, end_date, contract_value || 0, currency || 'USD', payment_terms, status || 'draft', special_conditions);
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      RETURNING *
+    `, [contractor_id, agreement_number, title, scope_of_work, start_date, end_date, contract_value || 0, currency || 'USD', payment_terms, status || 'draft', special_conditions]);
 
-    const agreement = db.prepare('SELECT * FROM contractor_agreements WHERE id = ?').get(result.lastInsertRowid);
-    res.status(201).json(agreement);
+    res.status(201).json(rows[0]);
   } catch (err) {
-    if (err.message.includes('UNIQUE')) {
+    if (err.code === '23505') {
       return res.status(400).json({ error: 'Agreement number already exists' });
     }
     res.status(500).json({ error: err.message });
@@ -80,7 +82,7 @@ router.post('/', (req, res) => {
 });
 
 // PUT update agreement
-router.put('/:id', (req, res) => {
+router.put('/:id', async (req, res) => {
   try {
     const {
       contractor_id, agreement_number, title, scope_of_work,
@@ -88,31 +90,31 @@ router.put('/:id', (req, res) => {
       payment_terms, status, special_conditions
     } = req.body;
 
-    const existing = db.prepare('SELECT * FROM contractor_agreements WHERE id = ?').get(req.params.id);
-    if (!existing) return res.status(404).json({ error: 'Agreement not found' });
+    const { rows: existing } = await pool.query('SELECT id FROM contractor_agreements WHERE id = $1', [req.params.id]);
+    if (!existing[0]) return res.status(404).json({ error: 'Agreement not found' });
 
-    db.prepare(`
+    const { rows } = await pool.query(`
       UPDATE contractor_agreements SET
-      contractor_id=?, agreement_number=?, title=?, scope_of_work=?,
-      start_date=?, end_date=?, contract_value=?, currency=?,
-      payment_terms=?, status=?, special_conditions=?,
-      updated_at=datetime('now')
-      WHERE id=?
-    `).run(contractor_id, agreement_number, title, scope_of_work, start_date, end_date, contract_value, currency, payment_terms, status, special_conditions, req.params.id);
+      contractor_id=$1, agreement_number=$2, title=$3, scope_of_work=$4,
+      start_date=$5, end_date=$6, contract_value=$7, currency=$8,
+      payment_terms=$9, status=$10, special_conditions=$11,
+      updated_at=NOW()
+      WHERE id=$12
+      RETURNING *
+    `, [contractor_id, agreement_number, title, scope_of_work, start_date, end_date, contract_value, currency, payment_terms, status, special_conditions, req.params.id]);
 
-    const updated = db.prepare('SELECT * FROM contractor_agreements WHERE id = ?').get(req.params.id);
-    res.json(updated);
+    res.json(rows[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
 // DELETE agreement
-router.delete('/:id', (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
-    const existing = db.prepare('SELECT * FROM contractor_agreements WHERE id = ?').get(req.params.id);
-    if (!existing) return res.status(404).json({ error: 'Agreement not found' });
-    db.prepare('DELETE FROM contractor_agreements WHERE id = ?').run(req.params.id);
+    const { rows } = await pool.query('SELECT id FROM contractor_agreements WHERE id = $1', [req.params.id]);
+    if (!rows[0]) return res.status(404).json({ error: 'Agreement not found' });
+    await pool.query('DELETE FROM contractor_agreements WHERE id = $1', [req.params.id]);
     res.json({ message: 'Agreement deleted successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });

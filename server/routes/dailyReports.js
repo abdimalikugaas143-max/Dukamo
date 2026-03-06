@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../database');
+const pool = require('../database');
 
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const { shift, supervisor_name, from_date, to_date, operational_plan_id } = req.query;
     let query = `
@@ -12,67 +12,69 @@ router.get('/', (req, res) => {
       WHERE 1=1
     `;
     const params = [];
+    let idx = 1;
 
-    if (shift) { query += ' AND dr.shift = ?'; params.push(shift); }
-    if (supervisor_name) { query += ' AND dr.supervisor_name LIKE ?'; params.push(`%${supervisor_name}%`); }
-    if (from_date) { query += ' AND dr.report_date >= ?'; params.push(from_date); }
-    if (to_date) { query += ' AND dr.report_date <= ?'; params.push(to_date); }
-    if (operational_plan_id) { query += ' AND dr.operational_plan_id = ?'; params.push(operational_plan_id); }
+    if (shift) { query += ` AND dr.shift = $${idx++}`; params.push(shift); }
+    if (supervisor_name) { query += ` AND dr.supervisor_name ILIKE $${idx++}`; params.push(`%${supervisor_name}%`); }
+    if (from_date) { query += ` AND dr.report_date >= $${idx++}`; params.push(from_date); }
+    if (to_date) { query += ` AND dr.report_date <= $${idx++}`; params.push(to_date); }
+    if (operational_plan_id) { query += ` AND dr.operational_plan_id = $${idx++}`; params.push(operational_plan_id); }
     query += ' ORDER BY dr.report_date DESC, dr.created_at DESC';
 
-    res.json(db.prepare(query).all(...params));
+    const { rows } = await pool.query(query, params);
+    res.json(rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-router.get('/:id', (req, res) => {
+router.get('/:id', async (req, res) => {
   try {
-    const report = db.prepare(`
+    const { rows } = await pool.query(`
       SELECT dr.*, op.plan_title
       FROM daily_reports dr
       LEFT JOIN operational_plans op ON dr.operational_plan_id = op.id
-      WHERE dr.id = ?
-    `).get(req.params.id);
-    if (!report) return res.status(404).json({ error: 'Report not found' });
-    res.json(report);
+      WHERE dr.id = $1
+    `, [req.params.id]);
+    if (!rows[0]) return res.status(404).json({ error: 'Report not found' });
+    res.json(rows[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   try {
     const { report_date, shift, supervisor_name, production_summary, units_produced, quality_issues, safety_incidents, equipment_status, weather_conditions, attendance_count, notes, operational_plan_id } = req.body;
     if (!report_date || !supervisor_name) return res.status(400).json({ error: 'report_date and supervisor_name are required' });
 
-    const result = db.prepare(
-      'INSERT INTO daily_reports (report_date, shift, supervisor_name, production_summary, units_produced, quality_issues, safety_incidents, equipment_status, weather_conditions, attendance_count, notes, operational_plan_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-    ).run(report_date, shift || 'day', supervisor_name, production_summary, units_produced || 0, quality_issues, safety_incidents, equipment_status, weather_conditions, attendance_count || 0, notes, operational_plan_id || null);
-
-    res.status(201).json(db.prepare('SELECT * FROM daily_reports WHERE id = ?').get(result.lastInsertRowid));
+    const { rows } = await pool.query(
+      'INSERT INTO daily_reports (report_date, shift, supervisor_name, production_summary, units_produced, quality_issues, safety_incidents, equipment_status, weather_conditions, attendance_count, notes, operational_plan_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *',
+      [report_date, shift || 'day', supervisor_name, production_summary, units_produced || 0, quality_issues, safety_incidents, equipment_status, weather_conditions, attendance_count || 0, notes, operational_plan_id || null]
+    );
+    res.status(201).json(rows[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-router.put('/:id', (req, res) => {
+router.put('/:id', async (req, res) => {
   try {
     const { report_date, shift, supervisor_name, production_summary, units_produced, quality_issues, safety_incidents, equipment_status, weather_conditions, attendance_count, notes, operational_plan_id } = req.body;
 
-    db.prepare(
-      'UPDATE daily_reports SET report_date=?, shift=?, supervisor_name=?, production_summary=?, units_produced=?, quality_issues=?, safety_incidents=?, equipment_status=?, weather_conditions=?, attendance_count=?, notes=?, operational_plan_id=? WHERE id=?'
-    ).run(report_date, shift, supervisor_name, production_summary, units_produced, quality_issues, safety_incidents, equipment_status, weather_conditions, attendance_count, notes, operational_plan_id || null, req.params.id);
-
-    res.json(db.prepare('SELECT * FROM daily_reports WHERE id = ?').get(req.params.id));
+    const { rows } = await pool.query(
+      'UPDATE daily_reports SET report_date=$1, shift=$2, supervisor_name=$3, production_summary=$4, units_produced=$5, quality_issues=$6, safety_incidents=$7, equipment_status=$8, weather_conditions=$9, attendance_count=$10, notes=$11, operational_plan_id=$12 WHERE id=$13 RETURNING *',
+      [report_date, shift, supervisor_name, production_summary, units_produced, quality_issues, safety_incidents, equipment_status, weather_conditions, attendance_count, notes, operational_plan_id || null, req.params.id]
+    );
+    res.json(rows[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-router.delete('/:id', (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
-    db.prepare('DELETE FROM daily_reports WHERE id = ?').run(req.params.id);
+    await pool.query('DELETE FROM daily_reports WHERE id = $1', [req.params.id]);
     res.json({ message: 'Report deleted' });
   } catch (err) {
     res.status(500).json({ error: err.message });

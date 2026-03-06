@@ -1,19 +1,19 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../database');
+const pool = require('../database');
 
 // GET all details for an agreement
-router.get('/agreement/:agreementId', (req, res) => {
+router.get('/agreement/:agreementId', async (req, res) => {
   try {
-    const details = db.prepare('SELECT * FROM contract_details WHERE agreement_id = ? ORDER BY id').all(req.params.agreementId);
-    res.json(details);
+    const { rows } = await pool.query('SELECT * FROM contract_details WHERE agreement_id = $1 ORDER BY id', [req.params.agreementId]);
+    res.json(rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
 // POST create detail item
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   try {
     const { agreement_id, item_description, unit, quantity, unit_price, notes } = req.body;
     if (!agreement_id || !item_description) {
@@ -24,43 +24,41 @@ router.post('/', (req, res) => {
     const price = parseFloat(unit_price) || 0;
     const total = qty * price;
 
-    const result = db.prepare(
-      'INSERT INTO contract_details (agreement_id, item_description, unit, quantity, unit_price, total_price, notes) VALUES (?, ?, ?, ?, ?, ?, ?)'
-    ).run(agreement_id, item_description, unit, qty, price, total, notes);
-
-    const detail = db.prepare('SELECT * FROM contract_details WHERE id = ?').get(result.lastInsertRowid);
-    res.status(201).json(detail);
+    const { rows } = await pool.query(
+      'INSERT INTO contract_details (agreement_id, item_description, unit, quantity, unit_price, total_price, notes) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+      [agreement_id, item_description, unit, qty, price, total, notes]
+    );
+    res.status(201).json(rows[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
 // PUT update detail
-router.put('/:id', (req, res) => {
+router.put('/:id', async (req, res) => {
   try {
     const { item_description, unit, quantity, unit_price, notes } = req.body;
-    const existing = db.prepare('SELECT * FROM contract_details WHERE id = ?').get(req.params.id);
-    if (!existing) return res.status(404).json({ error: 'Detail not found' });
+    const { rows: existing } = await pool.query('SELECT id FROM contract_details WHERE id = $1', [req.params.id]);
+    if (!existing[0]) return res.status(404).json({ error: 'Detail not found' });
 
     const qty = parseFloat(quantity) || 1;
     const price = parseFloat(unit_price) || 0;
     const total = qty * price;
 
-    db.prepare(
-      'UPDATE contract_details SET item_description=?, unit=?, quantity=?, unit_price=?, total_price=?, notes=? WHERE id=?'
-    ).run(item_description, unit, qty, price, total, notes, req.params.id);
-
-    const updated = db.prepare('SELECT * FROM contract_details WHERE id = ?').get(req.params.id);
-    res.json(updated);
+    const { rows } = await pool.query(
+      'UPDATE contract_details SET item_description=$1, unit=$2, quantity=$3, unit_price=$4, total_price=$5, notes=$6 WHERE id=$7 RETURNING *',
+      [item_description, unit, qty, price, total, notes, req.params.id]
+    );
+    res.json(rows[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
 // DELETE detail
-router.delete('/:id', (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
-    db.prepare('DELETE FROM contract_details WHERE id = ?').run(req.params.id);
+    await pool.query('DELETE FROM contract_details WHERE id = $1', [req.params.id]);
     res.json({ message: 'Item deleted' });
   } catch (err) {
     res.status(500).json({ error: err.message });

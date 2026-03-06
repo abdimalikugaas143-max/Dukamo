@@ -1,80 +1,81 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../database');
+const pool = require('../database');
 
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   try {
-    res.json(db.prepare('SELECT * FROM monthly_reports ORDER BY report_month DESC').all());
+    const { rows } = await pool.query('SELECT * FROM monthly_reports ORDER BY report_month DESC');
+    res.json(rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-router.get('/:id', (req, res) => {
+router.get('/:id', async (req, res) => {
   try {
-    const report = db.prepare('SELECT * FROM monthly_reports WHERE id = ?').get(req.params.id);
-    if (!report) return res.status(404).json({ error: 'Report not found' });
-    res.json(report);
+    const { rows } = await pool.query('SELECT * FROM monthly_reports WHERE id = $1', [req.params.id]);
+    if (!rows[0]) return res.status(404).json({ error: 'Report not found' });
+    res.json(rows[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
 // Auto-populate from daily reports
-router.get('/aggregate/:month', (req, res) => {
+router.get('/aggregate/:month', async (req, res) => {
   try {
     const month = req.params.month; // YYYY-MM
     const startDate = `${month}-01`;
     const endDate = `${month}-31`;
 
-    const aggregated = db.prepare(`
+    const { rows } = await pool.query(`
       SELECT
         COUNT(*) as report_count,
         SUM(units_produced) as total_units,
         SUM(attendance_count) as total_attendance
       FROM daily_reports
-      WHERE report_date >= ? AND report_date <= ?
-    `).get(startDate, endDate);
+      WHERE report_date >= $1 AND report_date <= $2
+    `, [startDate, endDate]);
 
-    res.json(aggregated);
+    res.json(rows[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   try {
     const { report_month, prepared_by, total_units_produced, total_contracts_value, active_contractors, production_highlights, challenges, recommendations, financial_summary } = req.body;
     if (!report_month || !prepared_by) return res.status(400).json({ error: 'report_month and prepared_by are required' });
 
-    const result = db.prepare(
-      'INSERT INTO monthly_reports (report_month, prepared_by, total_units_produced, total_contracts_value, active_contractors, production_highlights, challenges, recommendations, financial_summary) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
-    ).run(report_month, prepared_by, total_units_produced || 0, total_contracts_value || 0, active_contractors || 0, production_highlights, challenges, recommendations, financial_summary);
-
-    res.status(201).json(db.prepare('SELECT * FROM monthly_reports WHERE id = ?').get(result.lastInsertRowid));
+    const { rows } = await pool.query(
+      'INSERT INTO monthly_reports (report_month, prepared_by, total_units_produced, total_contracts_value, active_contractors, production_highlights, challenges, recommendations, financial_summary) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *',
+      [report_month, prepared_by, total_units_produced || 0, total_contracts_value || 0, active_contractors || 0, production_highlights, challenges, recommendations, financial_summary]
+    );
+    res.status(201).json(rows[0]);
   } catch (err) {
-    if (err.message.includes('UNIQUE')) return res.status(400).json({ error: 'A report for this month already exists' });
+    if (err.code === '23505') return res.status(400).json({ error: 'A report for this month already exists' });
     res.status(500).json({ error: err.message });
   }
 });
 
-router.put('/:id', (req, res) => {
+router.put('/:id', async (req, res) => {
   try {
     const { report_month, prepared_by, total_units_produced, total_contracts_value, active_contractors, production_highlights, challenges, recommendations, financial_summary } = req.body;
 
-    db.prepare(
-      `UPDATE monthly_reports SET report_month=?, prepared_by=?, total_units_produced=?, total_contracts_value=?, active_contractors=?, production_highlights=?, challenges=?, recommendations=?, financial_summary=?, updated_at=datetime('now') WHERE id=?`
-    ).run(report_month, prepared_by, total_units_produced, total_contracts_value, active_contractors, production_highlights, challenges, recommendations, financial_summary, req.params.id);
-
-    res.json(db.prepare('SELECT * FROM monthly_reports WHERE id = ?').get(req.params.id));
+    const { rows } = await pool.query(
+      'UPDATE monthly_reports SET report_month=$1, prepared_by=$2, total_units_produced=$3, total_contracts_value=$4, active_contractors=$5, production_highlights=$6, challenges=$7, recommendations=$8, financial_summary=$9, updated_at=NOW() WHERE id=$10 RETURNING *',
+      [report_month, prepared_by, total_units_produced, total_contracts_value, active_contractors, production_highlights, challenges, recommendations, financial_summary, req.params.id]
+    );
+    res.json(rows[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-router.delete('/:id', (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
-    db.prepare('DELETE FROM monthly_reports WHERE id = ?').run(req.params.id);
+    await pool.query('DELETE FROM monthly_reports WHERE id = $1', [req.params.id]);
     res.json({ message: 'Report deleted' });
   } catch (err) {
     res.status(500).json({ error: err.message });

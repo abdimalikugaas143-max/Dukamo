@@ -19,6 +19,11 @@ app.use('/api/dashboard', require('./routes/dashboard'));
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
 
-app.listen(PORT, () => {
-  console.log(`OPS Management Server running on http://localhost:${PORT}`);
-});
+// Only listen when running directly (not as a Vercel serverless function)
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`OPS Management Server running on http://localhost:${PORT}`);
+  });
+}
+
+module.exports = app;
