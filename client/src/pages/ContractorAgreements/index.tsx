@@ -8,7 +8,7 @@ import { FormField, Input, Select, Textarea } from '@/components/shared/FormFiel
 import { ContractPrintView } from '@/components/print/ContractPrintView';
 import type { ContractorAgreement, Contractor } from '@/types';
 import { formatDate, formatCurrency } from '@/lib/utils';
-import { apiGet, apiPost, apiPut, apiDelete, apiFetch } from '@/lib/api';
+import { apiGet, apiPost, apiPut, apiDelete } from '@/lib/api';
 
 const STATUSES = ['draft', 'active', 'completed', 'terminated'];
 
