@@ -146,7 +146,6 @@ async function migrate() {
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
-    `);
 
       CREATE TABLE IF NOT EXISTS project_contractors (
         id SERIAL PRIMARY KEY,
