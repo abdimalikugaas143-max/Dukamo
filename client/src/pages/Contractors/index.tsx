@@ -1,29 +1,53 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Pencil, Trash2, Eye } from 'lucide-react';
+import { Plus, Pencil, Trash2, Eye, FolderKanban } from 'lucide-react';
 import { DataTable } from '@/components/shared/DataTable';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { Modal } from '@/components/shared/Modal';
 import { FormField, Input, Select, Textarea } from '@/components/shared/FormField';
 import type { Contractor } from '@/types';
 import { formatDate } from '@/lib/utils';
+import { apiGet, apiPost, apiPut, apiDelete } from '@/lib/api';
 
 const TRADES = ['Welder', 'Fabricator', 'Steel Supplier', 'Assembly Technician', 'Painter', 'Electrician', 'Machinist', 'Subcontractor', 'Other'];
 
 const emptyForm = { name: '', company_name: '', trade: '', phone: '', email: '', address: '', status: 'active', notes: '' };
+
+interface ContractorProject {
+  id: number;
+  project_code: string;
+  title: string;
+  status: string;
+  client_name?: string;
+  vehicle_type?: string;
+  role?: string;
+}
+
+function ProjectStatusPill({ status }: { status: string }) {
+  const map: Record<string, string> = {
+    pending: 'bg-amber-50 text-amber-700 border-amber-200',
+    ongoing: 'bg-blue-50 text-blue-700 border-blue-200',
+    completed: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  };
+  return <span className={`inline-block text-xs font-medium border px-2 py-0.5 rounded-full capitalize ${map[status] || 'bg-slate-100 text-slate-600'}`}>{status}</span>;
+}
 
 export function Contractors() {
   const [contractors, setContractors] = useState<Contractor[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [viewModal, setViewModal] = useState(false);
+  const [projectsModal, setProjectsModal] = useState(false);
   const [editing, setEditing] = useState<Contractor | null>(null);
   const [viewing, setViewing] = useState<Contractor | null>(null);
+  const [viewingProjects, setViewingProjects] = useState<Contractor | null>(null);
+  const [contractorProjects, setContractorProjects] = useState<ContractorProject[]>([]);
+  const [loadingProjects, setLoadingProjects] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const fetchContractors = useCallback(() => {
-    fetch('/api/contractors').then(r => r.json()).then(setContractors).finally(() => setLoading(false));
+    apiGet<Contractor[]>('/api/contractors').then(setContractors).catch(() => setContractors([])).finally(() => setLoading(false));
   }, []);
 
   useEffect(() => { fetchContractors(); }, [fetchContractors]);
@@ -47,6 +71,20 @@ export function Contractors() {
     setViewModal(true);
   }
 
+  async function openProjects(c: Contractor) {
+    setViewingProjects(c);
+    setLoadingProjects(true);
+    setProjectsModal(true);
+    try {
+      const projects = await apiGet<ContractorProject[]>(`/api/contractors/${c.id}/projects`);
+      setContractorProjects(projects);
+    } catch {
+      setContractorProjects([]);
+    } finally {
+      setLoadingProjects(false);
+    }
+  }
+
   function validate() {
     const e: Record<string, string> = {};
     if (!form.name.trim()) e.name = 'Name is required';
@@ -59,10 +97,11 @@ export function Contractors() {
     if (Object.keys(e).length > 0) { setErrors(e); return; }
     setSaving(true);
     try {
-      const url = editing ? `/api/contractors/${editing.id}` : '/api/contractors';
-      const method = editing ? 'PUT' : 'POST';
-      const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) });
-      if (!res.ok) throw new Error(await res.text());
+      if (editing) {
+        await apiPut(`/api/contractors/${editing.id}`, form);
+      } else {
+        await apiPost('/api/contractors', form);
+      }
       setModalOpen(false);
       fetchContractors();
     } catch (err) {
@@ -74,7 +113,7 @@ export function Contractors() {
 
   async function handleDelete(c: Contractor) {
     if (!confirm(`Delete contractor "${c.name}"? This cannot be undone.`)) return;
-    await fetch(`/api/contractors/${c.id}`, { method: 'DELETE' });
+    await apiDelete(`/api/contractors/${c.id}`);
     fetchContractors();
   }
 
@@ -110,6 +149,7 @@ export function Contractors() {
             return (
               <div className="flex items-center justify-end gap-1">
                 <button onClick={() => openView(c)} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700" title="View"><Eye size={15} /></button>
+                <button onClick={() => openProjects(c)} className="p-1.5 rounded-lg text-slate-400 hover:bg-blue-50 hover:text-blue-600" title="View Projects"><FolderKanban size={15} /></button>
                 <button onClick={() => openEdit(c)} className="p-1.5 rounded-lg text-slate-400 hover:bg-blue-50 hover:text-blue-600" title="Edit"><Pencil size={15} /></button>
                 <button onClick={() => handleDelete(c)} className="p-1.5 rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-600" title="Delete"><Trash2 size={15} /></button>
               </div>
@@ -184,7 +224,45 @@ export function Contractors() {
                 <span className="text-sm text-slate-800">{label === 'Status' ? <StatusBadge status={value as string} /> : value}</span>
               </div>
             ) : null)}
+            <div className="pt-3 border-t border-slate-100">
+              <button
+                onClick={() => { setViewModal(false); openProjects(viewing); }}
+                className="flex items-center gap-2 text-sm text-blue-600 font-medium hover:text-blue-700"
+              >
+                <FolderKanban size={14} /> View Assigned Projects
+              </button>
+            </div>
           </div>
+        )}
+      </Modal>
+
+      {/* Projects Modal */}
+      <Modal isOpen={projectsModal} onClose={() => setProjectsModal(false)} title={`Projects — ${viewingProjects?.name}`} size="lg">
+        {loadingProjects ? (
+          <div className="flex items-center justify-center h-24"><div className="animate-spin w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full" /></div>
+        ) : contractorProjects.length === 0 ? (
+          <div className="text-center py-8">
+            <FolderKanban size={32} className="text-slate-300 mx-auto mb-3" />
+            <p className="text-slate-500 text-sm">{viewingProjects?.name} is not assigned to any projects yet.</p>
+            <p className="text-slate-400 text-xs mt-1">Assign them from the Projects page.</p>
+          </div>
+        ) : (
+          <ul className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden">
+            {contractorProjects.map(p => (
+              <li key={p.id} className="flex items-center justify-between px-4 py-3 hover:bg-slate-50">
+                <div>
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="font-mono text-xs font-bold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded">{p.project_code}</span>
+                    <ProjectStatusPill status={p.status} />
+                  </div>
+                  <p className="text-sm font-semibold text-slate-800">{p.title}</p>
+                  <p className="text-xs text-slate-400">
+                    {p.client_name ? `${p.client_name} · ` : ''}{p.vehicle_type || ''}{p.role ? ` · Role: ${p.role}` : ''}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ul>
         )}
       </Modal>
     </div>

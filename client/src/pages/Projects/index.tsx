@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Pencil, Trash2, Eye, FolderKanban } from 'lucide-react';
+import { Plus, Pencil, Trash2, Eye, FolderKanban, Users, X } from 'lucide-react';
 import { DataTable } from '@/components/shared/DataTable';
 import { Modal } from '@/components/shared/Modal';
 import { FormField, Input, Select, Textarea } from '@/components/shared/FormField';
 import { apiGet, apiPost, apiPut, apiDelete } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
+import type { Contractor } from '@/types';
 
 export interface Project {
   id: number;
@@ -18,6 +19,18 @@ export interface Project {
   end_date?: string;
   notes?: string;
   created_at: string;
+}
+
+interface ProjectContractor {
+  assignment_id: number;
+  id: number;
+  name: string;
+  company_name?: string;
+  trade: string;
+  phone?: string;
+  email?: string;
+  status: string;
+  role?: string;
 }
 
 const VEHICLE_TYPES = ['Body truck', 'Trailer', 'Body tank', 'Trailer tank', 'Long truck', 'Underground tank', 'Maintenance', 'Accessories'];
@@ -39,11 +52,19 @@ export function Projects() {
   const [filterStatus, setFilterStatus] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [viewModal, setViewModal] = useState(false);
+  const [contractorModal, setContractorModal] = useState(false);
   const [editing, setEditing] = useState<Project | null>(null);
   const [viewing, setViewing] = useState<Project | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Contractor assignment state
+  const [projectContractors, setProjectContractors] = useState<ProjectContractor[]>([]);
+  const [allContractors, setAllContractors] = useState<Contractor[]>([]);
+  const [selectedContractorId, setSelectedContractorId] = useState('');
+  const [contractorRole, setContractorRole] = useState('');
+  const [assigningContractor, setAssigningContractor] = useState(false);
 
   const fetchProjects = useCallback(() => {
     const q = filterStatus ? `?status=${filterStatus}` : '';
@@ -90,8 +111,44 @@ export function Projects() {
     fetchProjects();
   }
 
+  async function openContractorModal(p: Project) {
+    setViewing(p);
+    const [assigned, all] = await Promise.all([
+      apiGet<ProjectContractor[]>(`/api/projects/${p.id}/contractors`),
+      apiGet<Contractor[]>('/api/contractors'),
+    ]);
+    setProjectContractors(assigned);
+    setAllContractors(all);
+    setSelectedContractorId('');
+    setContractorRole('');
+    setContractorModal(true);
+  }
+
+  async function handleAssignContractor() {
+    if (!viewing || !selectedContractorId) return;
+    setAssigningContractor(true);
+    try {
+      await apiPost(`/api/projects/${viewing.id}/contractors`, { contractor_id: Number(selectedContractorId), role: contractorRole || null });
+      const assigned = await apiGet<ProjectContractor[]>(`/api/projects/${viewing.id}/contractors`);
+      setProjectContractors(assigned);
+      setSelectedContractorId('');
+      setContractorRole('');
+    } catch (err: any) { alert(err.message); }
+    finally { setAssigningContractor(false); }
+  }
+
+  async function handleRemoveContractor(contractorId: number) {
+    if (!viewing) return;
+    await apiDelete(`/api/projects/${viewing.id}/contractors/${contractorId}`);
+    const assigned = await apiGet<ProjectContractor[]>(`/api/projects/${viewing.id}/contractors`);
+    setProjectContractors(assigned);
+  }
+
   const counts = { pending: 0, ongoing: 0, completed: 0 };
   projects.forEach(p => { if (p.status in counts) counts[p.status as keyof typeof counts]++; });
+
+  const assignedIds = new Set(projectContractors.map(pc => pc.id));
+  const availableContractors = allContractors.filter(c => c.status === 'active' && !assignedIds.has(c.id));
 
   const columns = [
     { key: 'project_code', header: 'Code', render: (r: Project) => <span className="font-mono text-xs font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded">{r.project_code}</span> },
@@ -148,9 +205,10 @@ export function Projects() {
             const p = row as unknown as Project;
             return (
               <div className="flex items-center justify-end gap-1">
-                <button onClick={() => { setViewing(p); setViewModal(true); }} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700"><Eye size={15} /></button>
-                <button onClick={() => openEdit(p)} className="p-1.5 rounded-lg text-slate-400 hover:bg-blue-50 hover:text-blue-600"><Pencil size={15} /></button>
-                <button onClick={() => handleDelete(p)} className="p-1.5 rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-600"><Trash2 size={15} /></button>
+                <button onClick={() => { setViewing(p); setViewModal(true); }} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700" title="View"><Eye size={15} /></button>
+                <button onClick={() => openContractorModal(p)} className="p-1.5 rounded-lg text-slate-400 hover:bg-emerald-50 hover:text-emerald-600" title="Manage Contractors"><Users size={15} /></button>
+                <button onClick={() => openEdit(p)} className="p-1.5 rounded-lg text-slate-400 hover:bg-blue-50 hover:text-blue-600" title="Edit"><Pencil size={15} /></button>
+                <button onClick={() => handleDelete(p)} className="p-1.5 rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-600" title="Delete"><Trash2 size={15} /></button>
               </div>
             );
           }}
@@ -231,6 +289,76 @@ export function Projects() {
             </div>
             {viewing.description && <div><h4 className="text-sm font-semibold text-slate-700 mb-1">Description</h4><p className="text-sm text-slate-600 whitespace-pre-wrap bg-slate-50 p-3 rounded-lg">{viewing.description}</p></div>}
             {viewing.notes && <div><h4 className="text-sm font-semibold text-slate-700 mb-1">Notes</h4><p className="text-sm text-slate-600 whitespace-pre-wrap">{viewing.notes}</p></div>}
+            <div className="pt-2 border-t border-slate-100">
+              <button onClick={() => { setViewModal(false); openContractorModal(viewing); }} className="flex items-center gap-2 text-sm text-emerald-700 font-medium hover:text-emerald-800">
+                <Users size={15} /> Manage Contractors
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Contractor Assignment Modal */}
+      <Modal isOpen={contractorModal} onClose={() => setContractorModal(false)} title={`Contractors — ${viewing?.title}`} size="lg">
+        {viewing && (
+          <div className="space-y-4">
+            {/* Assigned contractors list */}
+            <div>
+              <h4 className="text-sm font-semibold text-slate-700 mb-2">
+                Assigned Contractors ({projectContractors.length})
+              </h4>
+              {projectContractors.length === 0 ? (
+                <p className="text-sm text-slate-400 bg-slate-50 rounded-lg p-4 text-center">No contractors assigned yet.</p>
+              ) : (
+                <ul className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden">
+                  {projectContractors.map(pc => (
+                    <li key={pc.assignment_id} className="flex items-center justify-between px-4 py-3 hover:bg-slate-50">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-800">{pc.name}</p>
+                        <p className="text-xs text-slate-500">
+                          {pc.trade}{pc.company_name ? ` · ${pc.company_name}` : ''}{pc.role ? ` · ${pc.role}` : ''}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => handleRemoveContractor(pc.id)}
+                        className="p-1.5 rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-600"
+                        title="Remove from project"
+                      >
+                        <X size={15} />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            {/* Add contractor form */}
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
+              <h4 className="text-sm font-semibold text-slate-700 mb-3">Add Contractor to Project</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <FormField label="Contractor">
+                  <Select value={selectedContractorId} onChange={e => setSelectedContractorId(e.target.value)}>
+                    <option value="">Select contractor...</option>
+                    {availableContractors.map(c => (
+                      <option key={c.id} value={c.id}>{c.name}{c.company_name ? ` — ${c.company_name}` : ''} ({c.trade})</option>
+                    ))}
+                  </Select>
+                </FormField>
+                <FormField label="Role (optional)">
+                  <Input value={contractorRole} onChange={e => setContractorRole(e.target.value)} placeholder="e.g. Lead Welder" />
+                </FormField>
+              </div>
+              <button
+                onClick={handleAssignContractor}
+                disabled={assigningContractor || !selectedContractorId}
+                className="mt-3 flex items-center gap-2 px-4 py-2 text-sm font-medium bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-60"
+              >
+                <Plus size={15} /> {assigningContractor ? 'Assigning...' : 'Add Contractor'}
+              </button>
+              {availableContractors.length === 0 && (
+                <p className="text-xs text-slate-400 mt-2">All active contractors are already assigned, or no active contractors exist.</p>
+              )}
+            </div>
           </div>
         )}
       </Modal>

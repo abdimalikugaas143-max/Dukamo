@@ -6,6 +6,7 @@ import { Modal } from '@/components/shared/Modal';
 import { FormField, Input, Select, Textarea } from '@/components/shared/FormField';
 import type { ContractorPayment, Contractor, ContractorAgreement } from '@/types';
 import { formatDate, formatCurrency } from '@/lib/utils';
+import { apiGet, apiPost, apiPut, apiDelete } from '@/lib/api';
 
 const emptyForm = {
   agreement_id: '', contractor_id: '', payment_date: '', amount: '',
@@ -26,10 +27,10 @@ export function ContractorPayments() {
 
   const fetchAll = useCallback(() => {
     Promise.all([
-      fetch('/api/contractor-payments').then(r => r.json()),
-      fetch('/api/contractors').then(r => r.json()),
-      fetch('/api/contractor-agreements').then(r => r.json()),
-    ]).then(([p, c, a]) => { setPayments(p); setContractors(c); setAgreements(a); }).finally(() => setLoading(false));
+      apiGet<ContractorPayment[]>('/api/contractor-payments'),
+      apiGet<Contractor[]>('/api/contractors'),
+      apiGet<ContractorAgreement[]>('/api/contractor-agreements'),
+    ]).then(([p, c, a]) => { setPayments(p); setContractors(c); setAgreements(a); }).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
@@ -78,9 +79,11 @@ export function ContractorPayments() {
     setSaving(true);
     try {
       const payload = { ...form, agreement_id: Number(form.agreement_id), contractor_id: Number(form.contractor_id), amount: Number(form.amount) };
-      const url = editing ? `/api/contractor-payments/${editing.id}` : '/api/contractor-payments';
-      const res = await fetch(url, { method: editing ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-      if (!res.ok) throw new Error(await res.text());
+      if (editing) {
+        await apiPut(`/api/contractor-payments/${editing.id}`, payload);
+      } else {
+        await apiPost('/api/contractor-payments', payload);
+      }
       setModalOpen(false);
       fetchAll();
     } catch (err) {
@@ -92,7 +95,7 @@ export function ContractorPayments() {
 
   async function handleDelete(p: ContractorPayment) {
     if (!confirm('Delete this payment record?')) return;
-    await fetch(`/api/contractor-payments/${p.id}`, { method: 'DELETE' });
+    await apiDelete(`/api/contractor-payments/${p.id}`);
     fetchAll();
   }
 

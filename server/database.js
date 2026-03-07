@@ -148,6 +148,16 @@ async function migrate() {
       );
     `);
 
+      CREATE TABLE IF NOT EXISTS project_contractors (
+        id SERIAL PRIMARY KEY,
+        project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        contractor_id INTEGER NOT NULL REFERENCES contractors(id) ON DELETE CASCADE,
+        role TEXT,
+        assigned_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE(project_id, contractor_id)
+      );
+    `);
+
     // Safe migrations for existing deployments
     await client.query(`
       ALTER TABLE daily_reports ADD COLUMN IF NOT EXISTS supervisor_id INTEGER REFERENCES users(id) ON DELETE SET NULL;

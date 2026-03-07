@@ -66,4 +66,47 @@ router.delete('/:id', requireAuth, async (req, res) => {
   }
 });
 
+// GET contractors assigned to a project
+router.get('/:id/contractors', requireAuth, async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT pc.id as assignment_id, pc.role, pc.assigned_at,
+              c.id, c.name, c.company_name, c.trade, c.phone, c.email, c.status
+       FROM project_contractors pc
+       JOIN contractors c ON pc.contractor_id = c.id
+       WHERE pc.project_id = $1
+       ORDER BY pc.assigned_at DESC`,
+      [req.params.id]
+    );
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST assign a contractor to a project
+router.post('/:id/contractors', requireAuth, async (req, res) => {
+  try {
+    const { contractor_id, role } = req.body;
+    if (!contractor_id) return res.status(400).json({ error: 'contractor_id is required' });
+    const { rows } = await pool.query(
+      'INSERT INTO project_contractors (project_id, contractor_id, role) VALUES ($1, $2, $3) ON CONFLICT (project_id, contractor_id) DO NOTHING RETURNING *',
+      [req.params.id, contractor_id, role || null]
+    );
+    res.status(201).json(rows[0] || { message: 'Already assigned' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE remove a contractor from a project
+router.delete('/:id/contractors/:contractorId', requireAuth, async (req, res) => {
+  try {
+    await pool.query('DELETE FROM project_contractors WHERE project_id = $1 AND contractor_id = $2', [req.params.id, req.params.contractorId]);
+    res.json({ message: 'Contractor removed from project' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

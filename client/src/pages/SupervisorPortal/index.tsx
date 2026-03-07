@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { CheckCircle2, XCircle, Clock, FolderKanban, Plus, Truck, AlertCircle } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock, FolderKanban, Plus, Truck, AlertCircle, LogOut } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { Modal } from '@/components/shared/Modal';
 import { FormField, Input, Select, Textarea } from '@/components/shared/FormField';
@@ -24,7 +24,7 @@ function ReviewBadge({ status }: { status: string }) {
 }
 
 export function SupervisorPortal() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [reports, setReports] = useState<DailyReport[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
@@ -80,9 +80,14 @@ export function SupervisorPortal() {
             <h1 className="text-2xl font-bold">{user?.name}</h1>
             <p className="text-slate-400 text-sm mt-1">{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
           </div>
-          <button onClick={openSubmit} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors shadow-lg shadow-blue-600/30">
-            <Plus size={16} /> Submit Daily Report
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={openSubmit} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors shadow-lg shadow-blue-600/30">
+              <Plus size={16} /> Submit Daily Report
+            </button>
+            <button onClick={logout} className="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors">
+              <LogOut size={15} /> Sign Out
+            </button>
+          </div>
         </div>
       </div>
 

@@ -70,6 +70,23 @@ router.put('/:id', async (req, res) => {
   }
 });
 
+// GET projects for a contractor
+router.get('/:id/projects', async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT p.id, p.project_code, p.title, p.status, p.client_name, p.vehicle_type, pc.role
+       FROM project_contractors pc
+       JOIN projects p ON pc.project_id = p.id
+       WHERE pc.contractor_id = $1
+       ORDER BY p.created_at DESC`,
+      [req.params.id]
+    );
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // DELETE contractor
 router.delete('/:id', async (req, res) => {
   try {

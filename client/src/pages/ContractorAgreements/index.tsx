@@ -8,6 +8,7 @@ import { FormField, Input, Select, Textarea } from '@/components/shared/FormFiel
 import { ContractPrintView } from '@/components/print/ContractPrintView';
 import type { ContractorAgreement, Contractor } from '@/types';
 import { formatDate, formatCurrency } from '@/lib/utils';
+import { apiGet, apiPost, apiPut, apiDelete, apiFetch } from '@/lib/api';
 
 const STATUSES = ['draft', 'active', 'completed', 'terminated'];
 
@@ -38,18 +39,18 @@ export function ContractorAgreements() {
 
   const fetchAll = useCallback(() => {
     Promise.all([
-      fetch('/api/contractor-agreements').then(r => r.json()),
-      fetch('/api/contractors').then(r => r.json()),
+      apiGet<ContractorAgreement[]>('/api/contractor-agreements'),
+      apiGet<Contractor[]>('/api/contractors'),
     ]).then(([a, c]) => {
       setAgreements(a);
       setContractors(c);
-    }).finally(() => setLoading(false));
+    }).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
   async function openDetail(a: ContractorAgreement) {
-    const full = await fetch(`/api/contractor-agreements/${a.id}`).then(r => r.json());
+    const full = await apiGet<ContractorAgreement>(`/api/contractor-agreements/${a.id}`);
     setSelected(full);
     setDetailModal(true);
   }
@@ -94,9 +95,11 @@ export function ContractorAgreements() {
     setSaving(true);
     try {
       const payload = { ...form, contractor_id: Number(form.contractor_id), contract_value: Number(form.contract_value) || 0 };
-      const url = editing ? `/api/contractor-agreements/${editing.id}` : '/api/contractor-agreements';
-      const res = await fetch(url, { method: editing ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-      if (!res.ok) { const err = await res.json(); throw new Error(err.error); }
+      if (editing) {
+        await apiPut(`/api/contractor-agreements/${editing.id}`, payload);
+      } else {
+        await apiPost('/api/contractor-agreements', payload);
+      }
       setModalOpen(false);
       fetchAll();
     } catch (err) {
@@ -108,19 +111,15 @@ export function ContractorAgreements() {
 
   async function handleDelete(a: ContractorAgreement) {
     if (!confirm(`Delete agreement "${a.agreement_number}"?`)) return;
-    await fetch(`/api/contractor-agreements/${a.id}`, { method: 'DELETE' });
+    await apiDelete(`/api/contractor-agreements/${a.id}`);
     fetchAll();
   }
 
   async function handleAddItem() {
     if (!selected || !newItem.item_description) return;
     setAddingItem(true);
-    await fetch('/api/contract-details', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...newItem, agreement_id: selected.id, quantity: Number(newItem.quantity), unit_price: Number(newItem.unit_price) }),
-    });
-    const full = await fetch(`/api/contractor-agreements/${selected.id}`).then(r => r.json());
+    await apiPost('/api/contract-details', { ...newItem, agreement_id: selected.id, quantity: Number(newItem.quantity), unit_price: Number(newItem.unit_price) });
+    const full = await apiGet<ContractorAgreement>(`/api/contractor-agreements/${selected.id}`);
     setSelected(full);
     setNewItem({ item_description: '', unit: '', quantity: '1', unit_price: '0', notes: '' });
     setAddingItem(false);
@@ -128,8 +127,8 @@ export function ContractorAgreements() {
 
   async function handleDeleteItem(itemId: number) {
     if (!selected) return;
-    await fetch(`/api/contract-details/${itemId}`, { method: 'DELETE' });
-    const full = await fetch(`/api/contractor-agreements/${selected.id}`).then(r => r.json());
+    await apiDelete(`/api/contract-details/${itemId}`);
+    const full = await apiGet<ContractorAgreement>(`/api/contractor-agreements/${selected.id}`);
     setSelected(full);
   }
 

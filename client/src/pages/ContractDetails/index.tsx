@@ -5,6 +5,7 @@ import { Modal } from '@/components/shared/Modal';
 import { FormField, Input, Textarea, Select } from '@/components/shared/FormField';
 import type { ContractDetail, ContractorAgreement } from '@/types';
 import { formatCurrency } from '@/lib/utils';
+import { apiGet, apiPut, apiDelete } from '@/lib/api';
 
 interface ContractDetailWithAgreement extends ContractDetail {
   agreement_number?: string;
@@ -23,17 +24,20 @@ export function ContractDetails() {
   const [saving, setSaving] = useState(false);
 
   const fetchAll = useCallback(async () => {
-    const agrs: ContractorAgreement[] = await fetch('/api/contractor-agreements').then(r => r.json());
-    setAgreements(agrs);
-
-    // Fetch all details for all agreements
-    const allDetails: ContractDetailWithAgreement[] = [];
-    for (const agr of agrs) {
-      const items: ContractDetail[] = await fetch(`/api/contract-details/agreement/${agr.id}`).then(r => r.json());
-      items.forEach(item => allDetails.push({ ...item, agreement_number: agr.agreement_number, agreement_title: agr.title }));
+    try {
+      const agrs: ContractorAgreement[] = await apiGet<ContractorAgreement[]>('/api/contractor-agreements');
+      setAgreements(agrs);
+      const allDetails: ContractDetailWithAgreement[] = [];
+      for (const agr of agrs) {
+        const items: ContractDetail[] = await apiGet<ContractDetail[]>(`/api/contract-details/agreement/${agr.id}`);
+        items.forEach(item => allDetails.push({ ...item, agreement_number: agr.agreement_number, agreement_title: agr.title }));
+      }
+      setDetails(allDetails);
+    } catch {
+      setDetails([]);
+    } finally {
+      setLoading(false);
     }
-    setDetails(allDetails);
-    setLoading(false);
   }, []);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
@@ -48,11 +52,7 @@ export function ContractDetails() {
     if (!editing) return;
     setSaving(true);
     try {
-      await fetch(`/api/contract-details/${editing.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, quantity: Number(form.quantity), unit_price: Number(form.unit_price) }),
-      });
+      await apiPut(`/api/contract-details/${editing.id}`, { ...form, quantity: Number(form.quantity), unit_price: Number(form.unit_price) });
       setModalOpen(false);
       fetchAll();
     } catch (err) { alert('Error: ' + err); }
@@ -61,7 +61,7 @@ export function ContractDetails() {
 
   async function handleDelete(d: ContractDetailWithAgreement) {
     if (!confirm('Delete this line item?')) return;
-    await fetch(`/api/contract-details/${d.id}`, { method: 'DELETE' });
+    await apiDelete(`/api/contract-details/${d.id}`);
     fetchAll();
   }
 
