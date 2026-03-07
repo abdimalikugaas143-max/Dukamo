@@ -6,13 +6,25 @@ if (!process.env.DATABASE_URL) {
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+  ssl: { rejectUnauthorized: false },
 });
 
 async function migrate() {
   const client = await pool.connect();
   try {
+    // Core tables
     await client.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        email TEXT NOT NULL UNIQUE,
+        password_hash TEXT NOT NULL,
+        role TEXT NOT NULL DEFAULT 'supervisor',
+        is_active BOOLEAN NOT NULL DEFAULT true,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+
       CREATE TABLE IF NOT EXISTS contractors (
         id SERIAL PRIMARY KEY,
         name TEXT NOT NULL,
@@ -68,6 +80,21 @@ async function migrate() {
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
 
+      CREATE TABLE IF NOT EXISTS projects (
+        id SERIAL PRIMARY KEY,
+        project_code TEXT NOT NULL UNIQUE,
+        title TEXT NOT NULL,
+        client_name TEXT,
+        description TEXT,
+        vehicle_type TEXT,
+        status TEXT NOT NULL DEFAULT 'pending',
+        start_date TEXT,
+        end_date TEXT,
+        notes TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+
       CREATE TABLE IF NOT EXISTS operational_plans (
         id SERIAL PRIMARY KEY,
         plan_title TEXT NOT NULL,
@@ -88,15 +115,16 @@ async function migrate() {
         report_date TEXT NOT NULL,
         shift TEXT NOT NULL DEFAULT 'day',
         supervisor_name TEXT NOT NULL,
+        supervisor_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        project_id INTEGER REFERENCES projects(id) ON DELETE SET NULL,
+        vehicle_code TEXT,
+        vehicle_type TEXT,
         production_summary TEXT,
-        units_produced INTEGER DEFAULT 0,
         quality_issues TEXT,
         safety_incidents TEXT,
         equipment_status TEXT,
         weather_conditions TEXT,
-        attendance_count INTEGER DEFAULT 0,
         notes TEXT,
-        operational_plan_id INTEGER REFERENCES operational_plans(id) ON DELETE SET NULL,
         review_status TEXT NOT NULL DEFAULT 'submitted',
         review_notes TEXT,
         reviewed_by TEXT,
@@ -119,14 +147,22 @@ async function migrate() {
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
     `);
-    // Add review columns to existing daily_reports tables (safe ALTER)
+
+    // Safe migrations for existing deployments
     await client.query(`
+      ALTER TABLE daily_reports ADD COLUMN IF NOT EXISTS supervisor_id INTEGER REFERENCES users(id) ON DELETE SET NULL;
+      ALTER TABLE daily_reports ADD COLUMN IF NOT EXISTS project_id INTEGER REFERENCES projects(id) ON DELETE SET NULL;
+      ALTER TABLE daily_reports ADD COLUMN IF NOT EXISTS vehicle_code TEXT;
+      ALTER TABLE daily_reports ADD COLUMN IF NOT EXISTS vehicle_type TEXT;
       ALTER TABLE daily_reports ADD COLUMN IF NOT EXISTS review_status TEXT NOT NULL DEFAULT 'submitted';
       ALTER TABLE daily_reports ADD COLUMN IF NOT EXISTS review_notes TEXT;
       ALTER TABLE daily_reports ADD COLUMN IF NOT EXISTS reviewed_by TEXT;
       ALTER TABLE daily_reports ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ;
     `);
+
     console.log('Database migrations applied successfully');
+  } catch (err) {
+    console.error('Migration error:', err.message);
   } finally {
     client.release();
   }

@@ -1,30 +1,49 @@
+import { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { RoleProvider, useRole } from './context/RoleContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { Layout } from './components/layout/Layout';
 import { SupervisorLayout } from './components/layout/SupervisorLayout';
-import { RoleSelect } from './pages/RoleSelect';
+import { Login } from './pages/Login';
+import { Setup } from './pages/Setup';
 import { Dashboard } from './pages/Dashboard';
 import { Contractors } from './pages/Contractors';
 import { ContractorAgreements } from './pages/ContractorAgreements';
 import { ContractorPayments } from './pages/ContractorPayments';
-import { OperationalPlans } from './pages/OperationalPlans';
+import { Projects } from './pages/Projects';
 import { DailyReports } from './pages/DailyReports';
 import { MonthlyReports } from './pages/MonthlyReports';
 import { ContractDetails } from './pages/ContractDetails';
 import { SupervisorPortal } from './pages/SupervisorPortal';
+import { Users } from './pages/Users';
 
 function AppRoutes() {
-  const { role } = useRole();
+  const { user, loading } = useAuth();
+  const [needsSetup, setNeedsSetup] = useState<boolean | null>(null);
 
-  if (!role) {
+  useEffect(() => {
+    fetch('/api/auth/setup-status')
+      .then(r => r.json())
+      .then(d => setNeedsSetup(d.needs_setup))
+      .catch(() => setNeedsSetup(false));
+  }, []);
+
+  if (loading || needsSetup === null) {
     return (
-      <Routes>
-        <Route path="*" element={<RoleSelect />} />
-      </Routes>
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <div className="animate-spin w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full" />
+      </div>
     );
   }
 
-  if (role === 'supervisor') {
+  if (needsSetup) {
+    return <Routes><Route path="*" element={<Setup />} /></Routes>;
+  }
+
+  if (!user) {
+    return <Routes><Route path="*" element={<Login />} /></Routes>;
+  }
+
+  if (user.role === 'supervisor') {
     return (
       <Routes>
         <Route element={<SupervisorLayout />}>
@@ -35,18 +54,18 @@ function AppRoutes() {
     );
   }
 
-  // Manager: full access
   return (
     <Routes>
       <Route element={<Layout />}>
         <Route index element={<Dashboard />} />
+        <Route path="projects" element={<Projects />} />
+        <Route path="daily-reports" element={<DailyReports />} />
+        <Route path="monthly-reports" element={<MonthlyReports />} />
         <Route path="contractors" element={<Contractors />} />
         <Route path="agreements" element={<ContractorAgreements />} />
         <Route path="payments" element={<ContractorPayments />} />
-        <Route path="operational-plans" element={<OperationalPlans />} />
-        <Route path="daily-reports" element={<DailyReports />} />
-        <Route path="monthly-reports" element={<MonthlyReports />} />
         <Route path="contract-details" element={<ContractDetails />} />
+        <Route path="users" element={<Users />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
@@ -56,9 +75,9 @@ function AppRoutes() {
 function App() {
   return (
     <BrowserRouter>
-      <RoleProvider>
+      <AuthProvider>
         <AppRoutes />
-      </RoleProvider>
+      </AuthProvider>
     </BrowserRouter>
   );
 }

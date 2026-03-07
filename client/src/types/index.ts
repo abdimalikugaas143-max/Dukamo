@@ -82,16 +82,18 @@ export interface DailyReport {
   report_date: string;
   shift: 'day' | 'night';
   supervisor_name: string;
+  supervisor_id?: number;
+  project_id?: number;
+  project_title?: string;
+  project_code?: string;
+  vehicle_code?: string;
+  vehicle_type?: string;
   production_summary?: string;
-  units_produced: number;
   quality_issues?: string;
   safety_incidents?: string;
   equipment_status?: string;
   weather_conditions?: string;
-  attendance_count: number;
   notes?: string;
-  operational_plan_id?: number;
-  plan_title?: string;
   review_status: 'submitted' | 'approved' | 'rejected';
   review_notes?: string;
   reviewed_by?: string;
@@ -122,10 +124,11 @@ export interface DashboardData {
     pendingPayments: number;
     pendingPaymentsAmount: number;
     overduePayments: number;
-    activePlans: number;
     pendingReviews: number;
+    projectStats: { pending: number; ongoing: number; completed: number };
   };
   recentDailyReports: DailyReport[];
   expiringContracts: ContractorAgreement[];
   paymentsByStatus: { status: string; count: number; total: number }[];
+  vehicleActivity: { vehicle_type: string; count: number }[];
 }

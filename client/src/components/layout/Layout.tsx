@@ -5,13 +5,14 @@ import { Header } from './Header';
 
 const ROUTE_TITLES: Record<string, string> = {
   '/': 'Dashboard',
-  '/operational-plans': 'Operational Plans',
+  '/projects': 'Projects',
   '/daily-reports': 'Daily Reports',
   '/monthly-reports': 'Monthly Reports',
   '/contractors': 'Contractors',
   '/agreements': 'Contractor Agreements',
   '/payments': 'Contractor Payments',
   '/contract-details': 'Contract Details',
+  '/users': 'User Management',
 };
 
 function getTitle(pathname: string): string {
