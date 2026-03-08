@@ -2,11 +2,10 @@ import { useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
-
-const IS_DUKAMO = import.meta.env.VITE_APP_MODE === 'dukamo';
+import { useAuth } from '@/context/AuthContext';
 
 const ROUTE_TITLES: Record<string, string> = {
-  '/': IS_DUKAMO ? 'Dukamo Marketplace' : 'Dashboard',
+  '/': 'Dashboard',
   '/projects': 'Projects',
   '/daily-reports': 'Daily Reports',
   '/monthly-reports': 'Monthly Reports',
@@ -18,14 +17,17 @@ const ROUTE_TITLES: Record<string, string> = {
   '/dukamo': 'Dukamo Marketplace',
   '/dukamo/jobs': 'Job Board',
   '/dukamo/jobs/post': 'Post a Job',
-  '/dukamo/gigs': 'Gig Marketplace',
+  '/dukamo/gigs': 'Gig Market',
   '/dukamo/gigs/post': 'Post a Task',
   '/dukamo/skills': 'Skills Center',
   '/dukamo/diaspora': 'Diaspora Hub',
-  '/dukamo/dashboard/worker': 'Worker Dashboard',
-  '/dukamo/dashboard/employer': 'Employer Dashboard',
-  '/dukamo/analytics': 'Dukamo Analytics',
+  '/dukamo/dashboard/worker': 'My Dashboard',
+  '/dukamo/dashboard/employer': 'My Dashboard',
+  '/dukamo/analytics': 'Analytics',
 };
+
+const WORKER_HOME_TITLE = 'My Dashboard';
+const EMPLOYER_HOME_TITLE = 'My Dashboard';
 
 function getTitle(pathname: string): string {
   // Try exact match first
@@ -40,6 +42,15 @@ function getTitle(pathname: string): string {
 export function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
+  const { user } = useAuth();
+  const role = user?.role;
+
+  // Workers and employers landing at '/' should show "My Dashboard"
+  function resolveTitle(pathname: string) {
+    if (pathname === '/' && role === 'worker') return WORKER_HOME_TITLE;
+    if (pathname === '/' && role === 'employer') return EMPLOYER_HOME_TITLE;
+    return getTitle(pathname);
+  }
 
   return (
     <div className="flex h-screen bg-slate-100 overflow-hidden">
@@ -47,7 +58,7 @@ export function Layout() {
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <Header
-          title={getTitle(location.pathname)}
+          title={resolveTitle(location.pathname)}
           onMenuClick={() => setSidebarOpen(true)}
         />
         <main className="flex-1 overflow-y-auto p-4 lg:p-6">
