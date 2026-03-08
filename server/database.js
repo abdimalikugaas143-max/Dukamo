@@ -297,6 +297,12 @@ async function migrate() {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_expires TIMESTAMPTZ;
     `);
 
+    // Admin/ops/supervisor accounts are trusted — mark them verified so they are never locked out
+    await client.query(`
+      UPDATE users SET email_verified = true
+      WHERE role IN ('admin', 'ops', 'supervisor') AND email_verified = false;
+    `);
+
     // Safe migrations for existing deployments
     await client.query(`
       ALTER TABLE daily_reports ADD COLUMN IF NOT EXISTS supervisor_id INTEGER REFERENCES users(id) ON DELETE SET NULL;

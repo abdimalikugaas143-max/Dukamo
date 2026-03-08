@@ -65,13 +65,21 @@ function AppRoutes() {
     );
   }
 
-  const isDukamoMode = import.meta.env.VITE_APP_MODE === 'dukamo';
-
-  if (isDukamoMode) {
+  // Role always determines which dashboard is shown — regardless of VITE_APP_MODE
+  if (user.role === 'admin' || user.role === 'ops') {
     return (
       <Routes>
         <Route element={<Layout />}>
-          <Route index element={<DukamoLanding />} />
+          <Route index element={<Dashboard />} />
+          <Route path="projects" element={<Projects />} />
+          <Route path="daily-reports" element={<DailyReports />} />
+          <Route path="monthly-reports" element={<MonthlyReports />} />
+          <Route path="contractors" element={<Contractors />} />
+          <Route path="agreements" element={<ContractorAgreements />} />
+          <Route path="payments" element={<ContractorPayments />} />
+          <Route path="contract-details" element={<ContractDetails />} />
+          <Route path="users" element={<Users />} />
+          {/* Admin can also browse the marketplace */}
           <Route path="dukamo" element={<DukamoLanding />} />
           <Route path="dukamo/jobs" element={<JobBoard />} />
           <Route path="dukamo/jobs/post" element={<PostJob />} />
@@ -85,8 +93,8 @@ function AppRoutes() {
           <Route path="dukamo/skills" element={<SkillsCenter />} />
           <Route path="dukamo/diaspora" element={<DiasporaHub />} />
           <Route path="dukamo/analytics" element={<DukamoAnalytics />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     );
   }
@@ -102,38 +110,52 @@ function AppRoutes() {
     );
   }
 
-  return (
-    <Routes>
-      <Route element={<Layout />}>
-        {/* Operations routes */}
-        <Route index element={<Dashboard />} />
-        <Route path="projects" element={<Projects />} />
-        <Route path="daily-reports" element={<DailyReports />} />
-        <Route path="monthly-reports" element={<MonthlyReports />} />
-        <Route path="contractors" element={<Contractors />} />
-        <Route path="agreements" element={<ContractorAgreements />} />
-        <Route path="payments" element={<ContractorPayments />} />
-        <Route path="contract-details" element={<ContractDetails />} />
-        <Route path="users" element={<Users />} />
+  // Workers and employers — Dukamo marketplace only
+  if (user.role === 'worker') {
+    return (
+      <Routes>
+        <Route element={<Layout />}>
+          <Route index element={<WorkerDashboard />} />
+          <Route path="dukamo/dashboard/worker" element={<WorkerDashboard />} />
+          <Route path="dukamo" element={<DukamoLanding />} />
+          <Route path="dukamo/jobs" element={<JobBoard />} />
+          <Route path="dukamo/jobs/:id" element={<JobDetail />} />
+          <Route path="dukamo/gigs" element={<GigMarket />} />
+          <Route path="dukamo/gigs/post" element={<PostGig />} />
+          <Route path="dukamo/gigs/:id" element={<GigDetail />} />
+          <Route path="dukamo/profile/:id" element={<WorkerProfilePage />} />
+          <Route path="dukamo/skills" element={<SkillsCenter />} />
+          <Route path="dukamo/diaspora" element={<DiasporaHub />} />
+        </Route>
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    );
+  }
 
-        {/* Dukamo Marketplace routes */}
-        <Route path="dukamo" element={<DukamoLanding />} />
-        <Route path="dukamo/jobs" element={<JobBoard />} />
-        <Route path="dukamo/jobs/post" element={<PostJob />} />
-        <Route path="dukamo/jobs/:id" element={<JobDetail />} />
-        <Route path="dukamo/gigs" element={<GigMarket />} />
-        <Route path="dukamo/gigs/post" element={<PostGig />} />
-        <Route path="dukamo/gigs/:id" element={<GigDetail />} />
-        <Route path="dukamo/profile/:id" element={<WorkerProfilePage />} />
-        <Route path="dukamo/dashboard/worker" element={<WorkerDashboard />} />
-        <Route path="dukamo/dashboard/employer" element={<EmployerDashboard />} />
-        <Route path="dukamo/skills" element={<SkillsCenter />} />
-        <Route path="dukamo/diaspora" element={<DiasporaHub />} />
-        <Route path="dukamo/analytics" element={<DukamoAnalytics />} />
-      </Route>
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
-  );
+  if (user.role === 'employer') {
+    return (
+      <Routes>
+        <Route element={<Layout />}>
+          <Route index element={<EmployerDashboard />} />
+          <Route path="dukamo/dashboard/employer" element={<EmployerDashboard />} />
+          <Route path="dukamo" element={<DukamoLanding />} />
+          <Route path="dukamo/jobs" element={<JobBoard />} />
+          <Route path="dukamo/jobs/post" element={<PostJob />} />
+          <Route path="dukamo/jobs/:id" element={<JobDetail />} />
+          <Route path="dukamo/gigs" element={<GigMarket />} />
+          <Route path="dukamo/gigs/:id" element={<GigDetail />} />
+          <Route path="dukamo/profile/:id" element={<WorkerProfilePage />} />
+          <Route path="dukamo/skills" element={<SkillsCenter />} />
+          <Route path="dukamo/diaspora" element={<DiasporaHub />} />
+          <Route path="dukamo/analytics" element={<DukamoAnalytics />} />
+        </Route>
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    );
+  }
+
+  // Fallback (unknown role)
+  return <Routes><Route path="*" element={<Navigate to="/" replace />} /></Routes>;
 }
 
 function App() {
