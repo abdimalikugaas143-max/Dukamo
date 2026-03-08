@@ -1,11 +1,8 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Briefcase, Mail, Lock, User, Eye, EyeOff, Zap } from 'lucide-react';
-import { useAuth } from '@/context/AuthContext';
-import type { AuthUser } from '@/context/AuthContext';
 
 export function DukamoRegister() {
-  const { login } = useAuth();
   const navigate = useNavigate();
   const [role, setRole] = useState<'worker' | 'employer'>('worker');
   const [form, setForm] = useState({ name: '', email: '', password: '' });
@@ -26,8 +23,7 @@ export function DukamoRegister() {
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error || 'Registration failed'); return; }
-      login(data.token, data.user as AuthUser);
-      navigate(role === 'employer' ? '/dukamo/dashboard/employer' : '/dukamo/dashboard/worker');
+      navigate('/verify-email', { state: { userId: data.userId, email: data.email } });
     } catch {
       setError('Network error. Please try again.');
     } finally {

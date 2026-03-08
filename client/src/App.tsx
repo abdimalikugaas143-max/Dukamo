@@ -17,6 +17,7 @@ import { SupervisorPortal } from './pages/SupervisorPortal';
 import { Users } from './pages/Users';
 // Dukamo Marketplace
 import { DukamoRegister } from './pages/Dukamo/Register';
+import { VerifyEmail } from './pages/Dukamo/VerifyEmail';
 import { DukamoLanding } from './pages/Dukamo/Landing';
 import { JobBoard } from './pages/Dukamo/JobBoard';
 import { JobDetail } from './pages/Dukamo/JobDetail';
@@ -58,6 +59,7 @@ function AppRoutes() {
     return (
       <Routes>
         <Route path="/register" element={<DukamoRegister />} />
+        <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="*" element={<Login />} />
       </Routes>
     );

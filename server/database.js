@@ -292,6 +292,9 @@ async function migrate() {
     await client.query(`
       ALTER TABLE users ADD COLUMN IF NOT EXISTS user_type TEXT DEFAULT 'ops';
       ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_complete BOOLEAN DEFAULT false;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT false;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_code TEXT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_expires TIMESTAMPTZ;
     `);
 
     // Safe migrations for existing deployments
