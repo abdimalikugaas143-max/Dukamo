@@ -37,6 +37,27 @@ router.post('/setup', async (req, res) => {
   }
 });
 
+// Public self-registration for Dukamo workers and employers
+router.post('/register', async (req, res) => {
+  try {
+    const { name, email, password, role } = req.body;
+    if (!name || !email || !password) return res.status(400).json({ error: 'Name, email and password required' });
+    if (password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    const allowedRoles = ['worker', 'employer'];
+    const userRole = allowedRoles.includes(role) ? role : 'worker';
+    const hash = await bcrypt.hash(password, 10);
+    const { rows: [user] } = await pool.query(
+      'INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, $4) RETURNING id, name, email, role',
+      [name, email.toLowerCase().trim(), hash, userRole]
+    );
+    const token = jwt.sign({ id: user.id, name: user.name, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
+    res.status(201).json({ token, user });
+  } catch (err) {
+    if (err.code === '23505') return res.status(400).json({ error: 'An account with this email already exists' });
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Login
 router.post('/login', async (req, res) => {
   try {

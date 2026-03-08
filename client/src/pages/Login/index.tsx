@@ -1,7 +1,10 @@
 import { useState } from 'react';
-import { Wrench, Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Wrench, Briefcase, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import type { AuthUser } from '@/context/AuthContext';
+
+const IS_DUKAMO = import.meta.env.VITE_APP_MODE === 'dukamo';
 
 export function Login() {
   const { login } = useAuth();
@@ -36,11 +39,11 @@ export function Login() {
       <div className="w-full max-w-sm">
         {/* Brand */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 bg-blue-600 rounded-2xl mb-4 shadow-lg shadow-blue-600/40">
-            <Wrench size={26} className="text-white" />
+          <div className={`inline-flex items-center justify-center w-14 h-14 ${IS_DUKAMO ? 'bg-emerald-600 shadow-emerald-600/40' : 'bg-blue-600 shadow-blue-600/40'} rounded-2xl mb-4 shadow-lg`}>
+            {IS_DUKAMO ? <Briefcase size={26} className="text-white" /> : <Wrench size={26} className="text-white" />}
           </div>
-          <h1 className="text-2xl font-bold text-white">Sahidmie Operations</h1>
-          <p className="text-slate-400 text-sm mt-1">Sign in to your account</p>
+          <h1 className="text-2xl font-bold text-white">{IS_DUKAMO ? 'Dukamo' : 'Sahidmie Operations'}</h1>
+          <p className="text-slate-400 text-sm mt-1">{IS_DUKAMO ? 'Sign in to your account' : 'Sign in to your account'}</p>
         </div>
 
         {/* Card */}
@@ -62,7 +65,7 @@ export function Login() {
                   onChange={e => setEmail(e.target.value)}
                   required
                   placeholder="you@example.com"
-                  className="w-full bg-slate-700 border border-slate-600 text-white placeholder-slate-500 rounded-xl pl-9 pr-4 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition"
+                  className={`w-full bg-slate-700 border border-slate-600 text-white placeholder-slate-500 rounded-xl pl-9 pr-4 py-2.5 text-sm outline-none focus:border-${IS_DUKAMO ? 'emerald' : 'blue'}-500 focus:ring-2 focus:ring-${IS_DUKAMO ? 'emerald' : 'blue'}-500/20 transition`}
                 />
               </div>
             </div>
@@ -77,7 +80,7 @@ export function Login() {
                   onChange={e => setPassword(e.target.value)}
                   required
                   placeholder="••••••••"
-                  className="w-full bg-slate-700 border border-slate-600 text-white placeholder-slate-500 rounded-xl pl-9 pr-10 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition"
+                  className={`w-full bg-slate-700 border border-slate-600 text-white placeholder-slate-500 rounded-xl pl-9 pr-10 py-2.5 text-sm outline-none focus:border-${IS_DUKAMO ? 'emerald' : 'blue'}-500 focus:ring-2 focus:ring-${IS_DUKAMO ? 'emerald' : 'blue'}-500/20 transition`}
                 />
                 <button type="button" onClick={() => setShowPwd(s => !s)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
                   {showPwd ? <EyeOff size={15} /> : <Eye size={15} />}
@@ -88,16 +91,23 @@ export function Login() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white font-semibold py-2.5 rounded-xl text-sm transition-colors mt-2"
+              className={`w-full ${IS_DUKAMO ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-blue-600 hover:bg-blue-500'} disabled:opacity-60 text-white font-semibold py-2.5 rounded-xl text-sm transition-colors mt-2`}
             >
               {loading ? 'Signing in...' : 'Sign In'}
             </button>
           </form>
         </div>
 
-        <p className="text-center text-slate-600 text-xs mt-6">
-          Contact your administrator if you need access
-        </p>
+        {IS_DUKAMO ? (
+          <p className="text-center text-slate-400 text-sm mt-5">
+            New to Dukamo?{' '}
+            <Link to="/register" className="text-emerald-400 hover:text-emerald-300 font-medium">Create a free account</Link>
+          </p>
+        ) : (
+          <p className="text-center text-slate-600 text-xs mt-6">
+            Contact your administrator if you need access
+          </p>
+        )}
       </div>
     </div>
   );

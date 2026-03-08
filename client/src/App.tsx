@@ -16,6 +16,7 @@ import { ContractDetails } from './pages/ContractDetails';
 import { SupervisorPortal } from './pages/SupervisorPortal';
 import { Users } from './pages/Users';
 // Dukamo Marketplace
+import { DukamoRegister } from './pages/Dukamo/Register';
 import { DukamoLanding } from './pages/Dukamo/Landing';
 import { JobBoard } from './pages/Dukamo/JobBoard';
 import { JobDetail } from './pages/Dukamo/JobDetail';
@@ -54,7 +55,12 @@ function AppRoutes() {
   }
 
   if (!user) {
-    return <Routes><Route path="*" element={<Login />} /></Routes>;
+    return (
+      <Routes>
+        <Route path="/register" element={<DukamoRegister />} />
+        <Route path="*" element={<Login />} />
+      </Routes>
+    );
   }
 
   const isDukamoMode = import.meta.env.VITE_APP_MODE === 'dukamo';
