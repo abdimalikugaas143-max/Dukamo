@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, FileText, BarChart3, Users, FileSignature, CreditCard, FolderOpen, Wrench, X, FolderKanban, UserCog } from 'lucide-react';
+import { LayoutDashboard, FileText, BarChart3, Users, FileSignature, CreditCard, FolderOpen, Wrench, X, FolderKanban, UserCog, Briefcase, Zap, Award, Globe, BarChart2 } from 'lucide-react';
 import { apiGet } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 
@@ -14,6 +14,17 @@ const NAV_ITEMS = [
   { to: '/payments', label: 'Payments', icon: CreditCard },
   { to: '/contract-details', label: 'Contract Details', icon: FolderOpen },
   { to: '/users', label: 'User Management', icon: UserCog, adminOnly: true },
+];
+
+const DUKAMO_ITEMS = [
+  { to: '/dukamo', label: 'Dukamo Home', icon: Globe, end: true },
+  { to: '/dukamo/jobs', label: 'Job Board', icon: Briefcase },
+  { to: '/dukamo/gigs', label: 'Gig Market', icon: Zap },
+  { to: '/dukamo/skills', label: 'Skills Center', icon: Award },
+  { to: '/dukamo/diaspora', label: 'Diaspora Hub', icon: Globe },
+  { to: '/dukamo/dashboard/worker', label: 'Worker Dashboard', icon: Users },
+  { to: '/dukamo/dashboard/employer', label: 'Employer Dashboard', icon: BarChart2 },
+  { to: '/dukamo/analytics', label: 'Analytics', icon: BarChart3 },
 ];
 
 interface SidebarProps { isOpen: boolean; onClose: () => void; }
@@ -50,6 +61,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
         {/* Nav */}
         <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 mb-2">Operations</p>
           {navItems.map(({ to, label, icon: Icon, end, badge }) => {
             const badgeCount = badge === 'pendingReviews' ? pendingReviews : 0;
             return (
@@ -71,6 +83,26 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               </NavLink>
             );
           })}
+
+          {/* Dukamo Marketplace section */}
+          <div className="pt-4">
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 mb-2 flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full"></span> Dukamo Marketplace
+            </p>
+            {DUKAMO_ITEMS.map(({ to, label, icon: Icon, end }) => (
+              <NavLink
+                key={to} to={to} end={end}
+                onClick={() => { if (window.innerWidth < 1024) onClose(); }}
+                className={({ isActive }) =>
+                  `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors
+                  ${isActive ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-300 hover:bg-slate-800 hover:text-white'}`
+                }
+              >
+                <Icon size={17} />
+                <span className="flex-1">{label}</span>
+              </NavLink>
+            ))}
+          </div>
         </nav>
 
         {/* Footer */}

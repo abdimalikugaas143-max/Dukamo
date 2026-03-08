@@ -13,9 +13,24 @@ const ROUTE_TITLES: Record<string, string> = {
   '/payments': 'Contractor Payments',
   '/contract-details': 'Contract Details',
   '/users': 'User Management',
+  '/dukamo': 'Dukamo Marketplace',
+  '/dukamo/jobs': 'Job Board',
+  '/dukamo/jobs/post': 'Post a Job',
+  '/dukamo/gigs': 'Gig Marketplace',
+  '/dukamo/gigs/post': 'Post a Task',
+  '/dukamo/skills': 'Skills Center',
+  '/dukamo/diaspora': 'Diaspora Hub',
+  '/dukamo/dashboard/worker': 'Worker Dashboard',
+  '/dukamo/dashboard/employer': 'Employer Dashboard',
+  '/dukamo/analytics': 'Dukamo Analytics',
 };
 
 function getTitle(pathname: string): string {
+  // Try exact match first
+  if (ROUTE_TITLES[pathname]) return ROUTE_TITLES[pathname];
+  // Try multi-segment dukamo routes
+  const dukamoMatch = Object.keys(ROUTE_TITLES).find(k => pathname.startsWith(k) && k !== '/');
+  if (dukamoMatch) return ROUTE_TITLES[dukamoMatch];
   const base = '/' + pathname.split('/')[1];
   return ROUTE_TITLES[base] || 'Operations';
 }

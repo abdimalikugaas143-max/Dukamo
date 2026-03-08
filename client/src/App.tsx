@@ -15,6 +15,20 @@ import { MonthlyReports } from './pages/MonthlyReports';
 import { ContractDetails } from './pages/ContractDetails';
 import { SupervisorPortal } from './pages/SupervisorPortal';
 import { Users } from './pages/Users';
+// Dukamo Marketplace
+import { DukamoLanding } from './pages/Dukamo/Landing';
+import { JobBoard } from './pages/Dukamo/JobBoard';
+import { JobDetail } from './pages/Dukamo/JobDetail';
+import { PostJob } from './pages/Dukamo/PostJob';
+import { GigMarket } from './pages/Dukamo/GigMarket';
+import { GigDetail } from './pages/Dukamo/GigDetail';
+import { PostGig } from './pages/Dukamo/PostGig';
+import { WorkerProfilePage } from './pages/Dukamo/WorkerProfile';
+import { WorkerDashboard } from './pages/Dukamo/WorkerDashboard';
+import { EmployerDashboard } from './pages/Dukamo/EmployerDashboard';
+import { SkillsCenter } from './pages/Dukamo/SkillsCenter';
+import { DiasporaHub } from './pages/Dukamo/DiasporaHub';
+import { DukamoAnalytics } from './pages/Dukamo/Analytics';
 
 function AppRoutes() {
   const { user, loading } = useAuth();
@@ -57,6 +71,7 @@ function AppRoutes() {
   return (
     <Routes>
       <Route element={<Layout />}>
+        {/* Operations routes */}
         <Route index element={<Dashboard />} />
         <Route path="projects" element={<Projects />} />
         <Route path="daily-reports" element={<DailyReports />} />
@@ -66,6 +81,21 @@ function AppRoutes() {
         <Route path="payments" element={<ContractorPayments />} />
         <Route path="contract-details" element={<ContractDetails />} />
         <Route path="users" element={<Users />} />
+
+        {/* Dukamo Marketplace routes */}
+        <Route path="dukamo" element={<DukamoLanding />} />
+        <Route path="dukamo/jobs" element={<JobBoard />} />
+        <Route path="dukamo/jobs/post" element={<PostJob />} />
+        <Route path="dukamo/jobs/:id" element={<JobDetail />} />
+        <Route path="dukamo/gigs" element={<GigMarket />} />
+        <Route path="dukamo/gigs/post" element={<PostGig />} />
+        <Route path="dukamo/gigs/:id" element={<GigDetail />} />
+        <Route path="dukamo/profile/:id" element={<WorkerProfilePage />} />
+        <Route path="dukamo/dashboard/worker" element={<WorkerDashboard />} />
+        <Route path="dukamo/dashboard/employer" element={<EmployerDashboard />} />
+        <Route path="dukamo/skills" element={<SkillsCenter />} />
+        <Route path="dukamo/diaspora" element={<DiasporaHub />} />
+        <Route path="dukamo/analytics" element={<DukamoAnalytics />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

@@ -26,6 +26,21 @@ export function cn(...classes: (string | undefined | false | null)[]): string {
   return classes.filter(Boolean).join(' ');
 }
 
+export function formatETB(amount: number): string {
+  return `ETB ${new Intl.NumberFormat('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount)}`;
+}
+
+export function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 30) return `${days}d ago`;
+  return formatDate(dateStr);
+}
+
 export const STATUS_COLORS: Record<string, string> = {
   active: 'bg-green-100 text-green-800',
   inactive: 'bg-gray-100 text-gray-700',
