@@ -4,6 +4,7 @@ import { Briefcase, MapPin, Clock, Search, Plus, Eye } from 'lucide-react';
 import { apiGet } from '@/lib/api';
 import { formatETB, timeAgo } from '@/lib/utils';
 import { CategoryBadge } from '@/components/shared/CategoryBadge';
+import { useAuth } from '@/context/AuthContext';
 import type { JobPost } from '@/types';
 
 const CATEGORIES = ['Technology', 'Construction', 'Healthcare', 'Agriculture', 'Education', 'Finance', 'Logistics', 'Hospitality', 'Manufacturing', 'Retail', 'Design', 'Other'];
@@ -18,6 +19,8 @@ export function JobBoard() {
   const [jobType, setJobType] = useState('');
   const [level, setLevel] = useState('');
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const canPost = user?.role === 'employer' || user?.role === 'admin' || user?.role === 'ops';
 
   const fetchJobs = useCallback(async () => {
     setLoading(true);
@@ -43,15 +46,23 @@ export function JobBoard() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Job Board</h1>
-          <p className="text-slate-500 text-sm mt-0.5">{jobs.length} open positions in Ethiopia</p>
+          <h1 className="text-2xl font-bold text-slate-800">
+            {user?.role === 'worker' ? 'Find a Job' : 'Job Board'}
+          </h1>
+          <p className="text-slate-500 text-sm mt-0.5">
+            {user?.role === 'worker'
+              ? `${jobs.length} open positions — click a job to apply`
+              : `${jobs.length} open positions in Ethiopia`}
+          </p>
         </div>
-        <button
-          onClick={() => navigate('/dukamo/jobs/post')}
-          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
-        >
-          <Plus size={16} /> Post a Job
-        </button>
+        {canPost && (
+          <button
+            onClick={() => navigate('/dukamo/jobs/post')}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
+          >
+            <Plus size={16} /> Post a Job
+          </button>
+        )}
       </div>
 
       {/* Filters */}

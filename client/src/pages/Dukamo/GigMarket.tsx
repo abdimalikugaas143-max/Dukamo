@@ -4,6 +4,7 @@ import { Zap, MapPin, Clock, Wifi, Plus, Search } from 'lucide-react';
 import { apiGet } from '@/lib/api';
 import { formatETB, timeAgo } from '@/lib/utils';
 import { CategoryBadge } from '@/components/shared/CategoryBadge';
+import { useAuth } from '@/context/AuthContext';
 import type { GigTask } from '@/types';
 
 const CATEGORIES = ['technology', 'construction', 'healthcare', 'agriculture', 'education', 'logistics', 'cleaning', 'delivery', 'design', 'writing', 'other'];
@@ -15,6 +16,8 @@ export function GigMarket() {
   const [category, setCategory] = useState('');
   const [remote, setRemote] = useState('');
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const canPost = user?.role === 'employer' || user?.role === 'admin' || user?.role === 'ops';
 
   const fetchGigs = useCallback(async () => {
     setLoading(true);
@@ -38,12 +41,20 @@ export function GigMarket() {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Gig Marketplace</h1>
-          <p className="text-slate-500 text-sm mt-0.5">{gigs.length} tasks available — bid to get started</p>
+          <h1 className="text-2xl font-bold text-slate-800">
+            {user?.role === 'worker' ? 'Find Gig Work' : 'Gig Marketplace'}
+          </h1>
+          <p className="text-slate-500 text-sm mt-0.5">
+            {user?.role === 'worker'
+              ? `${gigs.length} tasks available — click a task to place your bid`
+              : `${gigs.length} tasks available — bid to get started`}
+          </p>
         </div>
-        <button onClick={() => navigate('/dukamo/gigs/post')} className="flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
-          <Plus size={16} /> Post a Task
-        </button>
+        {canPost && (
+          <button onClick={() => navigate('/dukamo/gigs/post')} className="flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
+            <Plus size={16} /> Post a Task
+          </button>
+        )}
       </div>
 
       <div className="bg-white border border-slate-200 rounded-xl p-4">
@@ -69,7 +80,7 @@ export function GigMarket() {
       ) : gigs.length === 0 ? (
         <div className="bg-white border border-slate-200 rounded-xl p-12 text-center">
           <Zap size={40} className="mx-auto text-slate-300 mb-3" />
-          <p className="text-slate-500">No gigs found. Try adjusting your filters or post the first task!</p>
+          <p className="text-slate-500">{canPost ? 'No gigs found. Try adjusting your filters or post the first task!' : 'No tasks available right now. Check back soon!'}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
