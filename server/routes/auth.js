@@ -134,6 +134,63 @@ router.post('/resend-code', async (req, res) => {
   }
 });
 
+// Forgot password — send 6-digit reset code
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email required' });
+    const { rows } = await pool.query('SELECT * FROM users WHERE email = $1 AND is_active = true', [email.toLowerCase().trim()]);
+    // Always respond the same way to prevent email enumeration
+    if (!rows[0]) return res.json({ message: 'If that email exists, a reset code has been sent' });
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    const expires = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+    await pool.query('UPDATE users SET reset_code=$1, reset_code_expires=$2 WHERE id=$3', [code, expires, rows[0].id]);
+    const emailUser = process.env.EMAIL_USER;
+    const emailPass = process.env.EMAIL_PASS;
+    if (!emailUser || !emailPass) {
+      console.log(`[DEV] Password reset code for ${email}: ${code}`);
+    } else {
+      const transporter = nodemailer.createTransport({ service: 'gmail', auth: { user: emailUser, pass: emailPass } });
+      await transporter.sendMail({
+        from: `"Dukamo" <${emailUser}>`,
+        to: rows[0].email,
+        subject: 'Reset your Dukamo password',
+        html: `
+          <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px">
+            <h2 style="color:#059669">Reset your password</h2>
+            <p style="color:#475569">Hi ${rows[0].name}, use this code to reset your password:</p>
+            <div style="font-size:48px;font-weight:bold;letter-spacing:12px;color:#1e293b;margin:24px 0;text-align:center">${code}</div>
+            <p style="color:#94a3b8;font-size:14px">This code expires in 15 minutes. If you didn't request this, ignore this email.</p>
+          </div>
+        `,
+      });
+    }
+    res.json({ message: 'If that email exists, a reset code has been sent' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Reset password — verify code and set new password
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { email, code, newPassword } = req.body;
+    if (!email || !code || !newPassword) return res.status(400).json({ error: 'email, code and newPassword required' });
+    if (newPassword.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    const { rows } = await pool.query('SELECT * FROM users WHERE email = $1 AND is_active = true', [email.toLowerCase().trim()]);
+    if (!rows[0]) return res.status(400).json({ error: 'Invalid or expired code' });
+    if (rows[0].reset_code !== String(code)) return res.status(400).json({ error: 'Invalid or expired code' });
+    if (!rows[0].reset_code_expires || new Date() > new Date(rows[0].reset_code_expires)) {
+      return res.status(400).json({ error: 'Code has expired — please request a new one' });
+    }
+    const hash = await bcrypt.hash(newPassword, 10);
+    await pool.query('UPDATE users SET password_hash=$1, reset_code=NULL, reset_code_expires=NULL WHERE id=$2', [hash, rows[0].id]);
+    res.json({ message: 'Password updated successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Login
 router.post('/login', async (req, res) => {
   try {

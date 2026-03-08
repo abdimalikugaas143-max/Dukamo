@@ -297,6 +297,12 @@ async function migrate() {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_expires TIMESTAMPTZ;
     `);
 
+    // Password reset columns
+    await client.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_code TEXT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_code_expires TIMESTAMPTZ;
+    `);
+
     // Admin/ops/supervisor accounts are trusted — mark them verified so they are never locked out
     await client.query(`
       UPDATE users SET email_verified = true
