@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const nodemailer = require('nodemailer');
 const pool = require('../database');
 const { requireAuth, requireAdmin, JWT_SECRET } = require('../middleware/auth');
 
@@ -37,26 +38,31 @@ router.post('/setup', async (req, res) => {
   }
 });
 
-// Send verification email via Resend
+// Send verification email via Gmail SMTP (or log in dev)
 async function sendVerificationEmail(email, name, code) {
-  const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) return; // Skip if not configured (dev mode)
-  await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      from: 'Dukamo <noreply@dukamo.app>',
-      to: email,
-      subject: 'Your Dukamo verification code',
-      html: `
-        <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px">
-          <h2 style="color:#059669">Welcome to Dukamo, ${name}!</h2>
-          <p style="color:#475569">Your verification code is:</p>
-          <div style="font-size:48px;font-weight:bold;letter-spacing:12px;color:#1e293b;margin:24px 0">${code}</div>
-          <p style="color:#94a3b8;font-size:14px">This code expires in 15 minutes. Do not share it with anyone.</p>
-        </div>
-      `,
-    }),
+  const emailUser = process.env.EMAIL_USER;
+  const emailPass = process.env.EMAIL_PASS;
+  if (!emailUser || !emailPass) {
+    // Dev mode: print code to server logs so it can be tested
+    console.log(`[DEV] Verification code for ${email}: ${code}`);
+    return;
+  }
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: { user: emailUser, pass: emailPass },
+  });
+  await transporter.sendMail({
+    from: `"Dukamo" <${emailUser}>`,
+    to: email,
+    subject: 'Your Dukamo verification code',
+    html: `
+      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px">
+        <h2 style="color:#059669">Welcome to Dukamo, ${name}!</h2>
+        <p style="color:#475569">Your verification code is:</p>
+        <div style="font-size:48px;font-weight:bold;letter-spacing:12px;color:#1e293b;margin:24px 0;text-align:center">${code}</div>
+        <p style="color:#94a3b8;font-size:14px">This code expires in 15 minutes. Do not share it with anyone.</p>
+      </div>
+    `,
   });
 }
 
@@ -77,7 +83,13 @@ router.post('/register', async (req, res) => {
        RETURNING id, name, email, role`,
       [name, email.toLowerCase().trim(), hash, userRole, code, expires]
     );
-    await sendVerificationEmail(user.email, user.name, code);
+    try {
+      await sendVerificationEmail(user.email, user.name, code);
+    } catch (emailErr) {
+      // Roll back the user so they can retry with a working email config
+      await pool.query('DELETE FROM users WHERE id=$1', [user.id]);
+      return res.status(500).json({ error: 'Account created but we could not send the verification email. Please try again or contact support.' });
+    }
     res.status(201).json({ userId: user.id, email: user.email, message: 'Verification code sent to your email' });
   } catch (err) {
     if (err.code === '23505') return res.status(400).json({ error: 'An account with this email already exists' });
