@@ -57,6 +57,32 @@ function AppRoutes() {
     return <Routes><Route path="*" element={<Login />} /></Routes>;
   }
 
+  const isDukamoMode = import.meta.env.VITE_APP_MODE === 'dukamo';
+
+  if (isDukamoMode) {
+    return (
+      <Routes>
+        <Route element={<Layout />}>
+          <Route index element={<DukamoLanding />} />
+          <Route path="dukamo" element={<DukamoLanding />} />
+          <Route path="dukamo/jobs" element={<JobBoard />} />
+          <Route path="dukamo/jobs/post" element={<PostJob />} />
+          <Route path="dukamo/jobs/:id" element={<JobDetail />} />
+          <Route path="dukamo/gigs" element={<GigMarket />} />
+          <Route path="dukamo/gigs/post" element={<PostGig />} />
+          <Route path="dukamo/gigs/:id" element={<GigDetail />} />
+          <Route path="dukamo/profile/:id" element={<WorkerProfilePage />} />
+          <Route path="dukamo/dashboard/worker" element={<WorkerDashboard />} />
+          <Route path="dukamo/dashboard/employer" element={<EmployerDashboard />} />
+          <Route path="dukamo/skills" element={<SkillsCenter />} />
+          <Route path="dukamo/diaspora" element={<DiasporaHub />} />
+          <Route path="dukamo/analytics" element={<DukamoAnalytics />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Route>
+      </Routes>
+    );
+  }
+
   if (user.role === 'supervisor') {
     return (
       <Routes>

@@ -3,8 +3,10 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 
+const IS_DUKAMO = import.meta.env.VITE_APP_MODE === 'dukamo';
+
 const ROUTE_TITLES: Record<string, string> = {
-  '/': 'Dashboard',
+  '/': IS_DUKAMO ? 'Dukamo Marketplace' : 'Dashboard',
   '/projects': 'Projects',
   '/daily-reports': 'Daily Reports',
   '/monthly-reports': 'Monthly Reports',
