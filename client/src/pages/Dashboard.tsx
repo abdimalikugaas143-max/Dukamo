@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Users, FileSignature, DollarSign, AlertTriangle, ClipboardCheck, Truck, CheckCircle2, TrendingUp } from 'lucide-react';
+import { Users, FileSignature, DollarSign, AlertTriangle, ClipboardCheck, Truck, CheckCircle2, TrendingUp, Briefcase, Zap, CreditCard } from 'lucide-react';
 import { apiGet } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
 
@@ -8,13 +8,15 @@ interface DashData {
   stats: {
     activeContractors: number; activeAgreements: number; totalContractValue: number;
     pendingPayments: number; pendingPaymentsAmount: number; overduePayments: number;
-    pendingReviews: number;
+    pendingReviews: number; paidOutTotal: number; paidOutCount: number;
     projectStats: { pending: number; ongoing: number; completed: number };
   };
   recentDailyReports: any[];
   expiringContracts: any[];
   paymentsByStatus: { status: string; count: number; total: number }[];
   vehicleActivity: { vehicle_type: string; count: number }[];
+  recentPayments: any[];
+  dukamoStats: { workers: number; employers: number; openJobs: number; openGigs: number; applications: number; bids: number };
 }
 
 function ReviewDot({ status }: { status: string }) {
@@ -65,7 +67,7 @@ export function Dashboard() {
     </div>
   );
 
-  const { stats, recentDailyReports, expiringContracts, vehicleActivity } = data;
+  const { stats, recentDailyReports, expiringContracts, vehicleActivity, recentPayments, dukamoStats } = data;
   const totalProjects = stats.projectStats.pending + stats.projectStats.ongoing + stats.projectStats.completed;
 
   return (
@@ -94,6 +96,76 @@ export function Dashboard() {
         <StatCard title="Active Agreements" value={stats.activeAgreements} icon={FileSignature} accent="bg-violet-500" />
         <StatCard title="Contract Value" value={formatCurrency(stats.totalContractValue)} icon={DollarSign} accent="bg-emerald-500" />
         <StatCard title="Pending Payments" value={stats.pendingPayments} sub={formatCurrency(stats.pendingPaymentsAmount)} icon={AlertTriangle} accent={stats.overduePayments > 0 ? 'bg-red-500' : 'bg-orange-500'} />
+      </div>
+
+      {/* Financial Summary */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="font-semibold text-slate-800">Financial Summary</h2>
+            <p className="text-xs text-slate-400 mt-0.5">Contractor payment breakdown</p>
+          </div>
+          <Link to="/payments" className="flex items-center gap-1 text-xs text-blue-600 hover:underline font-medium">
+            <CreditCard size={13} /> Manage Payments
+          </Link>
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {/* Paid Out */}
+          <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+            <p className="text-xs font-medium text-emerald-600 uppercase tracking-wide">Total Paid Out</p>
+            <p className="text-2xl font-bold text-emerald-700 mt-1">{formatCurrency(stats.paidOutTotal)}</p>
+            <p className="text-xs text-emerald-500 mt-0.5">{stats.paidOutCount} payment{stats.paidOutCount !== 1 ? 's' : ''} completed</p>
+          </div>
+          {/* Pending */}
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+            <p className="text-xs font-medium text-amber-600 uppercase tracking-wide">Pending</p>
+            <p className="text-2xl font-bold text-amber-700 mt-1">{formatCurrency(stats.pendingPaymentsAmount)}</p>
+            <p className="text-xs text-amber-500 mt-0.5">{stats.pendingPayments} awaiting payment</p>
+          </div>
+          {/* Overdue */}
+          <div className={`${stats.overduePayments > 0 ? 'bg-red-50 border-red-200' : 'bg-slate-50 border-slate-200'} border rounded-xl p-4`}>
+            <p className={`text-xs font-medium uppercase tracking-wide ${stats.overduePayments > 0 ? 'text-red-600' : 'text-slate-500'}`}>Overdue</p>
+            <p className={`text-2xl font-bold mt-1 ${stats.overduePayments > 0 ? 'text-red-700' : 'text-slate-400'}`}>{stats.overduePayments}</p>
+            <p className={`text-xs mt-0.5 ${stats.overduePayments > 0 ? 'text-red-500' : 'text-slate-400'}`}>
+              {stats.overduePayments > 0 ? 'Needs attention' : 'All clear'}
+            </p>
+          </div>
+          {/* Total Contract Value */}
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+            <p className="text-xs font-medium text-blue-600 uppercase tracking-wide">Contract Value</p>
+            <p className="text-2xl font-bold text-blue-700 mt-1">{formatCurrency(stats.totalContractValue)}</p>
+            <p className="text-xs text-blue-500 mt-0.5">{stats.activeAgreements} active agreements</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Dukamo Marketplace Stats */}
+      <div className="bg-slate-900 rounded-2xl p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="font-semibold text-white flex items-center gap-2">
+              <Briefcase size={16} className="text-emerald-400" /> Dukamo Marketplace
+            </h2>
+            <p className="text-xs text-slate-400 mt-0.5">Platform activity overview</p>
+          </div>
+          <Link to="/dukamo" className="text-xs text-emerald-400 hover:text-emerald-300 font-medium">Open →</Link>
+        </div>
+        <div className="grid grid-cols-3 lg:grid-cols-6 gap-3">
+          {[
+            { label: 'Workers', value: dukamoStats.workers, icon: Users, color: 'text-blue-400' },
+            { label: 'Employers', value: dukamoStats.employers, icon: Briefcase, color: 'text-violet-400' },
+            { label: 'Open Jobs', value: dukamoStats.openJobs, icon: TrendingUp, color: 'text-emerald-400' },
+            { label: 'Open Gigs', value: dukamoStats.openGigs, icon: Zap, color: 'text-yellow-400' },
+            { label: 'Applications', value: dukamoStats.applications, icon: FileSignature, color: 'text-pink-400' },
+            { label: 'Bids', value: dukamoStats.bids, icon: DollarSign, color: 'text-orange-400' },
+          ].map(({ label, value, icon: Icon, color }) => (
+            <div key={label} className="bg-slate-800 rounded-xl p-3 text-center">
+              <Icon size={16} className={`${color} mx-auto mb-1`} />
+              <p className="text-xl font-bold text-white">{value}</p>
+              <p className="text-xs text-slate-400 mt-0.5">{label}</p>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Projects Status + Vehicle Activity */}
@@ -185,24 +257,36 @@ export function Dashboard() {
           )}
         </div>
 
-        {/* Expiring Contracts + Payment Overview */}
+        {/* Expiring Contracts + Recent Payments */}
         <div className="space-y-4">
-          {/* Payment Overview */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-5">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="font-semibold text-slate-800">Payments Overview</h2>
-              <TrendingUp size={16} className="text-slate-400" />
+          {/* Recent Payments */}
+          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+              <h2 className="font-semibold text-slate-800">Recent Payments</h2>
+              <Link to="/payments" className="text-xs text-blue-600 hover:underline font-medium">View all</Link>
             </div>
-            <div className="flex gap-3">
-              {data.paymentsByStatus.map(p => (
-                <div key={p.status} className="flex-1 text-center">
-                  <p className="text-lg font-bold text-slate-800">{p.count}</p>
-                  <p className="text-xs text-slate-500 capitalize">{p.status}</p>
-                  <p className="text-xs text-slate-400">{formatCurrency(p.total)}</p>
-                </div>
-              ))}
-              {data.paymentsByStatus.length === 0 && <p className="text-slate-400 text-sm">No payment records</p>}
-            </div>
+            {recentPayments.length === 0 ? (
+              <div className="py-6 text-center text-slate-400 text-sm">No payments recorded yet</div>
+            ) : (
+              <ul className="divide-y divide-slate-100">
+                {recentPayments.map((p: any) => (
+                  <li key={p.id} className="px-5 py-3 flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-slate-700 truncate">{p.contractor_name}</p>
+                      <p className="text-xs text-slate-400 truncate">{p.milestone_description || p.payment_method}</p>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <p className="text-sm font-bold text-slate-800">{formatCurrency(p.amount)}</p>
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                        p.status === 'paid' ? 'bg-emerald-100 text-emerald-700' :
+                        p.status === 'overdue' ? 'bg-red-100 text-red-700' :
+                        'bg-amber-100 text-amber-700'
+                      }`}>{p.status}</span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
           {/* Expiring Contracts */}
