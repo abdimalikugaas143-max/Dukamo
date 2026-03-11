@@ -20,7 +20,7 @@ export function JobBoard() {
   const [level, setLevel] = useState('');
   const navigate = useNavigate();
   const { user } = useAuth();
-  const canPost = user?.role === 'employer' || user?.role === 'admin' || user?.role === 'ops';
+  const canPost = user?.role === 'employer' || user?.role === 'admin';
 
   const fetchJobs = useCallback(async () => {
     setLoading(true);

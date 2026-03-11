@@ -1,14 +1,16 @@
 // Authenticated fetch wrapper — automatically attaches JWT from localStorage
 
 export function getToken(): string | null {
-  return localStorage.getItem('ops_token');
+  return localStorage.getItem('dukamo_token') || localStorage.getItem('ops_token');
 }
 
 export function setToken(token: string) {
-  localStorage.setItem('ops_token', token);
+  localStorage.setItem('dukamo_token', token);
 }
 
 export function clearToken() {
+  localStorage.removeItem('dukamo_token');
+  localStorage.removeItem('dukamo_user');
   localStorage.removeItem('ops_token');
   localStorage.removeItem('ops_user');
 }

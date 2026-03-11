@@ -204,17 +204,54 @@ router.post('/login', async (req, res) => {
     if (allowedPublicRoles.includes(rows[0].role) && !rows[0].email_verified) {
       return res.status(403).json({ error: 'Please verify your email before logging in', unverified: true, userId: rows[0].id });
     }
-    const user = { id: rows[0].id, name: rows[0].name, email: rows[0].email, role: rows[0].role };
-    const token = jwt.sign(user, JWT_SECRET, { expiresIn: '7d' });
+    const user = {
+      id: rows[0].id, name: rows[0].name, email: rows[0].email, role: rows[0].role,
+      profile_complete: rows[0].profile_complete || false,
+      email_verified: rows[0].email_verified || false,
+      phone: rows[0].phone || null,
+      phone_verified: rows[0].phone_verified || false,
+      country: rows[0].country || 'Ethiopia',
+    };
+    const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
     res.json({ token, user });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Get current user
-router.get('/me', requireAuth, (req, res) => {
-  res.json(req.user);
+// Get current user (full profile from DB)
+router.get('/me', requireAuth, async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      'SELECT id, name, email, role, profile_complete, email_verified, phone, phone_verified, country, referral_code, created_at FROM users WHERE id = $1',
+      [req.user.id]
+    );
+    if (!rows[0]) return res.status(404).json({ error: 'User not found' });
+    res.json(rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Update own profile (profile_complete, phone, country, language)
+router.put('/me', requireAuth, async (req, res) => {
+  try {
+    const { profile_complete, phone, country, language } = req.body;
+    const updates = [];
+    const params = [];
+    let i = 1;
+    if (profile_complete !== undefined) { updates.push(`profile_complete=$${i++}`); params.push(profile_complete); }
+    if (phone !== undefined) { updates.push(`phone=$${i++}`); params.push(phone); }
+    if (country !== undefined) { updates.push(`country=$${i++}`); params.push(country); }
+    if (language !== undefined) { updates.push(`language=$${i++}`); params.push(language); }
+    if (!updates.length) return res.json({ message: 'Nothing to update' });
+    updates.push('updated_at=NOW()');
+    params.push(req.user.id);
+    await pool.query(`UPDATE users SET ${updates.join(', ')} WHERE id=$${i}`, params);
+    res.json({ message: 'Profile updated' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // --- User Management (Admin only) ---

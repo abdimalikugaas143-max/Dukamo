@@ -12,148 +12,30 @@ const pool = new Pool({
 async function migrate() {
   const client = await pool.connect();
   try {
-    // Core tables
+    // Core users table
     await client.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
         name TEXT NOT NULL,
         email TEXT NOT NULL UNIQUE,
         password_hash TEXT NOT NULL,
-        role TEXT NOT NULL DEFAULT 'supervisor',
+        role TEXT NOT NULL DEFAULT 'worker',
         is_active BOOLEAN NOT NULL DEFAULT true,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      );
-
-      CREATE TABLE IF NOT EXISTS contractors (
-        id SERIAL PRIMARY KEY,
-        name TEXT NOT NULL,
-        company_name TEXT,
-        trade TEXT NOT NULL,
+        user_type TEXT DEFAULT 'dukamo',
+        profile_complete BOOLEAN DEFAULT false,
+        email_verified BOOLEAN DEFAULT false,
         phone TEXT,
-        email TEXT,
-        address TEXT,
-        status TEXT NOT NULL DEFAULT 'active',
-        notes TEXT,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      );
-
-      CREATE TABLE IF NOT EXISTS contractor_agreements (
-        id SERIAL PRIMARY KEY,
-        contractor_id INTEGER NOT NULL REFERENCES contractors(id) ON DELETE RESTRICT,
-        agreement_number TEXT NOT NULL UNIQUE,
-        title TEXT NOT NULL,
-        scope_of_work TEXT,
-        start_date TEXT,
-        end_date TEXT,
-        contract_value REAL DEFAULT 0,
-        currency TEXT DEFAULT 'USD',
-        payment_terms TEXT,
-        status TEXT NOT NULL DEFAULT 'draft',
-        special_conditions TEXT,
+        phone_verified BOOLEAN DEFAULT false,
+        country TEXT DEFAULT 'Ethiopia',
+        language TEXT DEFAULT 'en',
+        referral_code TEXT UNIQUE,
+        referred_by INTEGER REFERENCES users(id),
+        verification_code TEXT,
+        verification_expires TIMESTAMPTZ,
+        reset_code TEXT,
+        reset_code_expires TIMESTAMPTZ,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      );
-
-      CREATE TABLE IF NOT EXISTS contract_details (
-        id SERIAL PRIMARY KEY,
-        agreement_id INTEGER NOT NULL REFERENCES contractor_agreements(id) ON DELETE CASCADE,
-        item_description TEXT NOT NULL,
-        unit TEXT,
-        quantity REAL DEFAULT 1,
-        unit_price REAL DEFAULT 0,
-        total_price REAL DEFAULT 0,
-        notes TEXT
-      );
-
-      CREATE TABLE IF NOT EXISTS contractor_payments (
-        id SERIAL PRIMARY KEY,
-        agreement_id INTEGER NOT NULL REFERENCES contractor_agreements(id) ON DELETE RESTRICT,
-        contractor_id INTEGER NOT NULL REFERENCES contractors(id) ON DELETE RESTRICT,
-        payment_date TEXT,
-        amount REAL NOT NULL,
-        payment_method TEXT DEFAULT 'bank_transfer',
-        reference_number TEXT,
-        milestone_description TEXT,
-        status TEXT NOT NULL DEFAULT 'pending',
-        notes TEXT,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      );
-
-      CREATE TABLE IF NOT EXISTS projects (
-        id SERIAL PRIMARY KEY,
-        project_code TEXT NOT NULL UNIQUE,
-        title TEXT NOT NULL,
-        client_name TEXT,
-        description TEXT,
-        vehicle_type TEXT,
-        status TEXT NOT NULL DEFAULT 'pending',
-        start_date TEXT,
-        end_date TEXT,
-        notes TEXT,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      );
-
-      CREATE TABLE IF NOT EXISTS operational_plans (
-        id SERIAL PRIMARY KEY,
-        plan_title TEXT NOT NULL,
-        plan_type TEXT NOT NULL DEFAULT 'production',
-        start_date TEXT,
-        end_date TEXT,
-        status TEXT NOT NULL DEFAULT 'draft',
-        objectives TEXT,
-        resources_required TEXT,
-        assigned_team TEXT,
-        notes TEXT,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      );
-
-      CREATE TABLE IF NOT EXISTS daily_reports (
-        id SERIAL PRIMARY KEY,
-        report_date TEXT NOT NULL,
-        shift TEXT NOT NULL DEFAULT 'day',
-        supervisor_name TEXT NOT NULL,
-        supervisor_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
-        project_id INTEGER REFERENCES projects(id) ON DELETE SET NULL,
-        vehicle_code TEXT,
-        vehicle_type TEXT,
-        production_summary TEXT,
-        quality_issues TEXT,
-        safety_incidents TEXT,
-        equipment_status TEXT,
-        weather_conditions TEXT,
-        notes TEXT,
-        review_status TEXT NOT NULL DEFAULT 'submitted',
-        review_notes TEXT,
-        reviewed_by TEXT,
-        reviewed_at TIMESTAMPTZ,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      );
-
-      CREATE TABLE IF NOT EXISTS monthly_reports (
-        id SERIAL PRIMARY KEY,
-        report_month TEXT NOT NULL UNIQUE,
-        prepared_by TEXT NOT NULL,
-        total_units_produced INTEGER DEFAULT 0,
-        total_contracts_value REAL DEFAULT 0,
-        active_contractors INTEGER DEFAULT 0,
-        production_highlights TEXT,
-        challenges TEXT,
-        recommendations TEXT,
-        financial_summary TEXT,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      );
-
-      CREATE TABLE IF NOT EXISTS project_contractors (
-        id SERIAL PRIMARY KEY,
-        project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-        contractor_id INTEGER NOT NULL REFERENCES contractors(id) ON DELETE CASCADE,
-        role TEXT,
-        assigned_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        UNIQUE(project_id, contractor_id)
       );
     `);
 
@@ -164,14 +46,20 @@ async function migrate() {
         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
         bio TEXT,
         location TEXT,
+        country TEXT DEFAULT 'Ethiopia',
         skills TEXT,
         experience_years INTEGER DEFAULT 0,
         hourly_rate REAL,
+        currency TEXT DEFAULT 'ETB',
         availability TEXT DEFAULT 'available',
         portfolio_url TEXT,
         rating REAL DEFAULT 0,
         total_reviews INTEGER DEFAULT 0,
         verified BOOLEAN DEFAULT false,
+        id_verified BOOLEAN DEFAULT false,
+        open_to_remote_international BOOLEAN DEFAULT false,
+        english_level TEXT DEFAULT 'basic',
+        timezone TEXT DEFAULT 'Africa/Addis_Ababa',
         created_at TIMESTAMPTZ DEFAULT NOW()
       );
 
@@ -181,6 +69,7 @@ async function migrate() {
         company_name TEXT NOT NULL,
         industry TEXT,
         location TEXT,
+        country TEXT DEFAULT 'Ethiopia',
         website TEXT,
         description TEXT,
         verified BOOLEAN DEFAULT false,
@@ -196,6 +85,8 @@ async function migrate() {
         category TEXT NOT NULL,
         job_type TEXT DEFAULT 'full_time',
         location TEXT,
+        country TEXT DEFAULT 'Ethiopia',
+        is_remote BOOLEAN DEFAULT false,
         salary_min REAL,
         salary_max REAL,
         currency TEXT DEFAULT 'ETB',
@@ -228,6 +119,7 @@ async function migrate() {
         budget REAL NOT NULL,
         currency TEXT DEFAULT 'ETB',
         location TEXT,
+        country TEXT DEFAULT 'Ethiopia',
         is_remote BOOLEAN DEFAULT false,
         deadline TEXT,
         status TEXT DEFAULT 'open',
@@ -282,46 +174,94 @@ async function migrate() {
         type TEXT NOT NULL,
         amount REAL NOT NULL,
         currency TEXT DEFAULT 'ETB',
+        payment_method TEXT DEFAULT 'bank_transfer',
         reference TEXT,
         status TEXT DEFAULT 'pending',
+        notes TEXT,
         created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS messages (
+        id SERIAL PRIMARY KEY,
+        sender_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        recipient_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        job_id INTEGER REFERENCES job_posts(id),
+        gig_id INTEGER REFERENCES gig_tasks(id),
+        content TEXT NOT NULL,
+        read BOOLEAN DEFAULT false,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS referrals (
+        id SERIAL PRIMARY KEY,
+        referrer_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        referred_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        reward_paid BOOLEAN DEFAULT false,
+        reward_amount REAL DEFAULT 50,
+        currency TEXT DEFAULT 'ETB',
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        UNIQUE(referred_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS worker_loans (
+        id SERIAL PRIMARY KEY,
+        worker_id INTEGER NOT NULL REFERENCES worker_profiles(id) ON DELETE CASCADE,
+        amount REAL NOT NULL,
+        gig_id INTEGER REFERENCES gig_tasks(id),
+        status TEXT DEFAULT 'active',
+        repaid_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS employer_team_members (
+        id SERIAL PRIMARY KEY,
+        employer_id INTEGER NOT NULL REFERENCES employer_profiles(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        role TEXT DEFAULT 'recruiter',
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        UNIQUE(employer_id, user_id)
       );
     `);
 
-    // Dukamo user-type extensions
+    // Safe column additions for existing deployments
     await client.query(`
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS user_type TEXT DEFAULT 'ops';
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS phone TEXT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_verified BOOLEAN DEFAULT false;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS country TEXT DEFAULT 'Ethiopia';
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS language TEXT DEFAULT 'en';
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_code TEXT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS referred_by INTEGER;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS user_type TEXT DEFAULT 'dukamo';
       ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_complete BOOLEAN DEFAULT false;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT false;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_code TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_expires TIMESTAMPTZ;
-    `);
-
-    // Password reset columns
-    await client.query(`
       ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_code TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_code_expires TIMESTAMPTZ;
+
+      ALTER TABLE worker_profiles ADD COLUMN IF NOT EXISTS country TEXT DEFAULT 'Ethiopia';
+      ALTER TABLE worker_profiles ADD COLUMN IF NOT EXISTS currency TEXT DEFAULT 'ETB';
+      ALTER TABLE worker_profiles ADD COLUMN IF NOT EXISTS id_verified BOOLEAN DEFAULT false;
+      ALTER TABLE worker_profiles ADD COLUMN IF NOT EXISTS open_to_remote_international BOOLEAN DEFAULT false;
+      ALTER TABLE worker_profiles ADD COLUMN IF NOT EXISTS english_level TEXT DEFAULT 'basic';
+      ALTER TABLE worker_profiles ADD COLUMN IF NOT EXISTS timezone TEXT DEFAULT 'Africa/Addis_Ababa';
+
+      ALTER TABLE employer_profiles ADD COLUMN IF NOT EXISTS country TEXT DEFAULT 'Ethiopia';
+      ALTER TABLE job_posts ADD COLUMN IF NOT EXISTS country TEXT DEFAULT 'Ethiopia';
+      ALTER TABLE job_posts ADD COLUMN IF NOT EXISTS is_remote BOOLEAN DEFAULT false;
+      ALTER TABLE gig_tasks ADD COLUMN IF NOT EXISTS country TEXT DEFAULT 'Ethiopia';
+
+      ALTER TABLE platform_transactions ADD COLUMN IF NOT EXISTS payment_method TEXT DEFAULT 'bank_transfer';
+      ALTER TABLE platform_transactions ADD COLUMN IF NOT EXISTS notes TEXT;
     `);
 
-    // Admin/ops/supervisor accounts are trusted — mark them verified so they are never locked out
+    // Mark admin accounts as verified
     await client.query(`
       UPDATE users SET email_verified = true
       WHERE role IN ('admin', 'ops', 'supervisor') AND email_verified = false;
     `);
 
-    // Safe migrations for existing deployments
-    await client.query(`
-      ALTER TABLE daily_reports ADD COLUMN IF NOT EXISTS supervisor_id INTEGER REFERENCES users(id) ON DELETE SET NULL;
-      ALTER TABLE daily_reports ADD COLUMN IF NOT EXISTS project_id INTEGER REFERENCES projects(id) ON DELETE SET NULL;
-      ALTER TABLE daily_reports ADD COLUMN IF NOT EXISTS vehicle_code TEXT;
-      ALTER TABLE daily_reports ADD COLUMN IF NOT EXISTS vehicle_type TEXT;
-      ALTER TABLE daily_reports ADD COLUMN IF NOT EXISTS review_status TEXT NOT NULL DEFAULT 'submitted';
-      ALTER TABLE daily_reports ADD COLUMN IF NOT EXISTS review_notes TEXT;
-      ALTER TABLE daily_reports ADD COLUMN IF NOT EXISTS reviewed_by TEXT;
-      ALTER TABLE daily_reports ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ;
-    `);
-
-    console.log('Database migrations applied successfully');
+    console.log('Dukamo database migrations applied successfully');
   } catch (err) {
     console.error('Migration error:', err.message);
   } finally {
