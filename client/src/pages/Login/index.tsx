@@ -1,10 +1,8 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Wrench, Briefcase, Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { Users, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import type { AuthUser } from '@/context/AuthContext';
-
-const IS_DUKAMO = import.meta.env.VITE_APP_MODE === 'dukamo';
 
 export function Login() {
   const { login } = useAuth();
@@ -43,18 +41,16 @@ export function Login() {
     }
   }
 
-  const accent = IS_DUKAMO ? 'emerald' : 'blue';
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
         {/* Brand */}
         <div className="text-center mb-8">
-          <div className={`inline-flex items-center justify-center w-14 h-14 bg-${accent}-600 shadow-${accent}-600/40 rounded-2xl mb-4 shadow-lg`}>
-            {IS_DUKAMO ? <Briefcase size={26} className="text-white" /> : <Wrench size={26} className="text-white" />}
+          <div className="inline-flex items-center justify-center w-14 h-14 bg-emerald-600 shadow-emerald-600/40 rounded-2xl mb-4 shadow-lg">
+            <Users size={26} className="text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-white">{IS_DUKAMO ? 'Dukamo' : 'Sahidmie Operations'}</h1>
-          <p className="text-slate-400 text-sm mt-1">Sign in to your account</p>
+          <h1 className="text-2xl font-bold text-white">Dukamo</h1>
+          <p className="text-slate-400 text-sm mt-1">Africa's #1 Work Marketplace</p>
         </div>
 
         {/* Card */}
@@ -85,7 +81,7 @@ export function Login() {
                   onChange={e => setEmail(e.target.value)}
                   required
                   placeholder="you@example.com"
-                  className={`w-full bg-slate-700 border border-slate-600 text-white placeholder-slate-500 rounded-xl pl-9 pr-4 py-2.5 text-sm outline-none focus:border-${accent}-500 focus:ring-2 focus:ring-${accent}-500/20 transition`}
+                  className="w-full bg-slate-700 border border-slate-600 text-white placeholder-slate-500 rounded-xl pl-9 pr-4 py-2.5 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition"
                 />
               </div>
             </div>
@@ -93,7 +89,7 @@ export function Login() {
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="block text-xs font-medium text-slate-400">Password</label>
-                <Link to="/forgot-password" className={`text-xs text-${accent}-400 hover:text-${accent}-300 transition-colors`}>Forgot password?</Link>
+                <Link to="/forgot-password" className="text-xs text-emerald-400 hover:text-emerald-300 transition-colors">Forgot password?</Link>
               </div>
               <div className="relative">
                 <Lock size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
@@ -103,7 +99,7 @@ export function Login() {
                   onChange={e => setPassword(e.target.value)}
                   required
                   placeholder="••••••••"
-                  className={`w-full bg-slate-700 border border-slate-600 text-white placeholder-slate-500 rounded-xl pl-9 pr-10 py-2.5 text-sm outline-none focus:border-${accent}-500 focus:ring-2 focus:ring-${accent}-500/20 transition`}
+                  className="w-full bg-slate-700 border border-slate-600 text-white placeholder-slate-500 rounded-xl pl-9 pr-10 py-2.5 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition"
                 />
                 <button type="button" onClick={() => setShowPwd(s => !s)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
                   {showPwd ? <EyeOff size={15} /> : <Eye size={15} />}
@@ -114,23 +110,17 @@ export function Login() {
             <button
               type="submit"
               disabled={loading}
-              className={`w-full bg-${accent}-600 hover:bg-${accent}-500 disabled:opacity-60 text-white font-semibold py-2.5 rounded-xl text-sm transition-colors mt-2`}
+              className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white font-semibold py-2.5 rounded-xl text-sm transition-colors mt-2"
             >
               {loading ? 'Signing in...' : 'Sign In'}
             </button>
           </form>
         </div>
 
-        {IS_DUKAMO ? (
-          <p className="text-center text-slate-400 text-sm mt-5">
-            New to Dukamo?{' '}
-            <Link to="/register" className="text-emerald-400 hover:text-emerald-300 font-medium">Create a free account</Link>
-          </p>
-        ) : (
-          <p className="text-center text-slate-600 text-xs mt-6">
-            Contact your administrator if you need access
-          </p>
-        )}
+        <p className="text-center text-slate-400 text-sm mt-5">
+          New to Dukamo?{' '}
+          <Link to="/register" className="text-emerald-400 hover:text-emerald-300 font-medium">Create a free account</Link>
+        </p>
       </div>
     </div>
   );
