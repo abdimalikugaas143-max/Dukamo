@@ -7,11 +7,13 @@ generator and sign up. These values are the canonical record of the store.
 
 | Field | Value |
 |---|---|
-| Brand name | _e.g. "Cozy Cherny" — fill after preview pick_ |
-| Tagline | _e.g. "Real rain, real calm."_ |
-| Shopify `.myshopify.com` domain | _filled after signup_ |
-| Custom domain | _e.g. cozycherny.com — buy in Shopify admin → Settings → Domains_ |
-| Support email | _e.g. hello@cozycherny.com_ |
+| Brand name | Cozy Cherny |
+| Tagline | Real rain, real calm. |
+| Shopify `.myshopify.com` domain | `cozy-cherny.myshopify.com` |
+| Shopify admin URL | https://admin.shopify.com/store/cozy-cherny |
+| Custom domain | _TBD — buy in Shopify admin → Settings → Domains (~$15/yr). Candidates: cozycherny.com, raincloudco.com, thecloudshop.co_ |
+| Owner email | abdimalikugaas143@gmail.com |
+| Support email | _e.g. hello@cozycherny.com (set after custom domain is bought)_ |
 | Country | United States |
 | Currency | USD |
 

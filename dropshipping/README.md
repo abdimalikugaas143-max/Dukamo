@@ -15,8 +15,9 @@ auditable.
 | Payments | Shopify Payments + Shop Pay + Apple/Google Pay |
 | Fulfillment | Zendrop (auto-forward on paid) |
 | Supplier shipping | US-based, 2–5 business days |
-| Brand name | _filled in after preview selection — see `store-config.md`_ |
-| Store domain | _filled in after preview selection — see `store-config.md`_ |
+| Brand name | Cozy Cherny |
+| Store domain | `cozy-cherny.myshopify.com` |
+| Admin URL | https://admin.shopify.com/store/cozy-cherny |
 
 ## End-to-end flow
 
@@ -40,17 +41,19 @@ once the configuration in these files is applied.
 | File | Purpose |
 |---|---|
 | `product-spec.md` | Final product copy: title, price, description, bullets, FAQ, SEO |
-| `store-config.md` | Brand name, theme, domain, palette, fonts (filled after preview pick) |
+| `store-config.md` | Brand name, theme, domain, palette, fonts |
+| `manual-setup-walkthrough.md` | Click-by-click Shopify admin steps (start here) |
 | `zendrop-setup.md` | Step-by-step Zendrop install + auto-fulfillment configuration |
 | `payments-and-policies.md` | Shopify Payments activation + required policy pages |
 | `launch-checklist.md` | Pre-launch QA: test order, tracking sync, mobile, speed |
 
 ## What to do next
 
-1. Open the Shopify preview links surfaced by the assistant.
-2. Pick a theme + brand name you like.
-3. Click the preview's signup link — this provisions the real store.
-4. Fill in `store-config.md` with the chosen brand name and domain.
-5. Follow `zendrop-setup.md` to install Zendrop and enable auto-fulfillment.
-6. Follow `payments-and-policies.md` to activate Shopify Payments and policies.
-7. Run `launch-checklist.md` end-to-end before driving any ad traffic.
+Work through these in order. Each one points back to the specs above for the
+exact text/values to use.
+
+1. `manual-setup-walkthrough.md` — create the product, collection, pages, and
+   theme polish in Shopify admin.
+2. `zendrop-setup.md` — install Zendrop, link the supplier, enable auto-fulfill.
+3. `payments-and-policies.md` — activate Shopify Payments + policy pages.
+4. `launch-checklist.md` — run the end-to-end live test, then go live.
